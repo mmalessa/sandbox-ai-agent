@@ -1,0 +1,29 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_models:/root/.ollama/models
+    restart: unless-stopped
+
+  go-client:
+    build: 
+      context: ./go-client
+      target: dev
+      args:
+        APP_UID: 1000
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    volumes:
+      - ./go-client/:/go/src/go-client/
+      - gopkg:/go/pkg/
+      - gobin:/go/bin/
+    restart: unless-stopped
+    tty: true
+
+volumes:
+  ollama_models:
+  gopkg:
+  gobin:
