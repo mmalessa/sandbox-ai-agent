@@ -9,6 +9,7 @@ services:
     restart: unless-stopped
 
   go-client:
+    container_name: go-client
     build: 
       context: ./go-client
       target: dev

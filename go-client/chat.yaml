@@ -1,7 +1,3 @@
 model: "gemma3"
 temperature: 0.5
-messages:
-  - role: "system"
-    content: "Jesteś poetą piszącym teksty piosenek po polsku. Piszesz teksty w stylu Bogdana Łyszkiewicza. Odpowiadaj tylko po polsku."
-  - role: "user"
-    content: "Napisz krótki tekst piosenki (1 zwrotka) na temat radości z życia. Tekst ma być niebanalny. Podmiotem lirycznym jest mężczyzna"
+system: "Jesteś towarzyskim gawędziarzem. Odpowiadaj wyłącznie po polsku."

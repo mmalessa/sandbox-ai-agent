@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<title>Simple Chat</title>
+<style>
+  body { font-family: sans-serif; max-width: 1024px; margin: auto; }
+  #chat { border: 1px solid #ccc; padding: 10px; height: 600px; overflow-y: auto; }
+  .msg { margin: 5px 0; }
+  .me { color: blue; }
+  .bot { color: green; }
+</style>
+</head>
+<body>
+<h1>Chat WebSocket</h1>
+<div id="chat"></div>
+<input id="msgInput" type="text" placeholder="Write message..." style="width: 80%;">
+<button id="sendBtn">Wyślij</button>
+
+<script>
+let ws = new WebSocket(`ws://${location.host}/ws`);
+let chat = document.getElementById("chat");
+let input = document.getElementById("msgInput");
+let btn = document.getElementById("sendBtn");
+
+function addMessage(text, cls) {
+    let div = document.createElement("div");
+    div.className = `msg ${cls}`;
+    div.textContent = text;
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+}
+
+ws.onmessage = (event) => {
+    addMessage(event.data, "bot");
+};
+
+btn.onclick = () => {
+    let text = input.value.trim();
+    if (text) {
+        ws.send(text);
+        addMessage(text, "me");
+        input.value = "";
+    }
+};
+
+input.addEventListener("keypress", function(e) {
+    if (e.key === "Enter") {
+        btn.click();
+    }
+});
+</script>
+</body>
+</html>
