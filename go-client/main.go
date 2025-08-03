@@ -6,54 +6,81 @@ import (
 	"log"
 	"os"
 
-	"github.com/ollama/ollama/api"
+	openai "github.com/sashabaranov/go-openai"
 	"gopkg.in/yaml.v3"
 )
 
-type ChatConfig struct {
-	Model    string        `yaml:"model"`
-	Messages []api.Message `yaml:"messages"`
+type chatConfig struct {
+	Model       string  `yaml:"model"`
+	Temperature float32 `yaml:"temperature"`
+	Messages    []struct {
+		Role    string `yaml:"role"`
+		Content string `yaml:"content"`
+	} `yaml:"messages"`
 }
 
-func loadChatConfig(path string) (*ChatConfig, error) {
+func loadChatConfig(path string) (*chatConfig, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot read file %s: %w", path, err)
 	}
 
-	var cfg ChatConfig
+	var cfg chatConfig
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("YAML parsing error: %w", err)
 	}
 
 	return &cfg, nil
 }
 
+func getChatCompletionMessages(chatConfig *chatConfig) []openai.ChatCompletionMessage {
+	messages := make([]openai.ChatCompletionMessage, len(chatConfig.Messages))
+	for i, m := range chatConfig.Messages {
+		messages[i] = openai.ChatCompletionMessage{
+			Role:    m.Role,
+			Content: m.Content,
+		}
+	}
+
+	return messages
+}
+
 func main() {
-	client, err := api.ClientFromEnvironment()
-	if err != nil {
-		log.Fatal(err)
+
+	baseURL := os.Getenv("OPENAI_URL")
+	if baseURL == "" {
+		baseURL = "http://localhost:11434/v1"
+	}
+
+	apiToken := os.Getenv("OPENAI_API_TOKEN")
+	if apiToken == "" {
+		apiToken = "DefaultToken"
 	}
 
 	cfg, err := loadChatConfig("chat.yaml")
 	if err != nil {
-		log.Fatal("Błąd wczytywania YAML:", err)
+		log.Fatal("error loading YAML:", err)
 	}
 
-	ctx := context.Background()
-	req := &api.ChatRequest{
-		Model:    cfg.Model,
-		Messages: cfg.Messages,
-	}
+	config := openai.DefaultConfig(apiToken)
+	config.BaseURL = baseURL
+	client := openai.NewClientWithConfig(config)
 
-	respFunc := func(resp api.ChatResponse) error {
-		fmt.Print(resp.Message.Content)
-		return nil
-	}
+	messages := getChatCompletionMessages(cfg)
 
-	err = client.Chat(ctx, req, respFunc)
+	fmt.Println("Sending request")
+	resp, err := client.CreateChatCompletion(
+		context.Background(),
+		openai.ChatCompletionRequest{
+			Model:       cfg.Model,
+			Temperature: cfg.Temperature,
+			Messages:    messages,
+		},
+	)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Sending request ERROR: %v", err)
 	}
+
+	fmt.Println(resp.Choices[0].Message.Content)
 	fmt.Println("\n---------------------")
 }

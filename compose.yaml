@@ -15,7 +15,8 @@ services:
       args:
         APP_UID: 1000
     environment:
-      OLLAMA_HOST: http://ollama:11434
+      OPENAI_URL: http://ollama:11434/v1
+      OPENAI_API_TOKEN: "something"
     volumes:
       - ./go-client/:/go/src/go-client/
       - gopkg:/go/pkg/
