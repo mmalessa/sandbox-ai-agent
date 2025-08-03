@@ -1,3 +1,4 @@
-model: "gemma3"
+model: "llama3.1"
+# model: "gemma3"
 temperature: 0.5
 system: "Jesteś towarzyskim gawędziarzem. Odpowiadaj wyłącznie po polsku."

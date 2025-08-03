@@ -10,12 +10,15 @@ import (
 	"github.com/gorilla/websocket"
 
 	openai "github.com/sashabaranov/go-openai"
+	"github.com/sashabaranov/go-openai/jsonschema"
 	"gopkg.in/yaml.v3"
 )
 
 var client *openai.Client
 var cfg *chatConfig
 var messages []openai.ChatCompletionMessage
+var ctx context.Context
+var tools []openai.Tool
 
 type chatConfig struct {
 	Model       string  `yaml:"model"`
@@ -42,28 +45,64 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("New WebSocket connection")
 
 	for {
-		_, msg, err := conn.ReadMessage()
+		_, inputMsg, err := conn.ReadMessage()
 		if err != nil {
 			log.Println("Read error:", err)
 			break
 		}
 
-		log.Printf("Received: %s", msg)
-		messages = append(messages, openai.ChatCompletionMessage{Role: "user", Content: string(msg)})
+		log.Printf("Received: %s", inputMsg)
+		messages = append(messages, openai.ChatCompletionMessage{Role: "user", Content: string(inputMsg)})
 
 		// response logic
 		log.Println("Sending to AI")
 		resp, err := client.CreateChatCompletion(
-			context.Background(),
+			ctx,
 			openai.ChatCompletionRequest{
 				Model:       cfg.Model,
 				Temperature: cfg.Temperature,
 				Messages:    messages,
+				Tools:       tools,
 			},
 		)
 		if err != nil {
 			log.Fatalf("Sending request ERROR: %v", err)
 		}
+
+		respMsg := resp.Choices[0].Message
+		if len(respMsg.ToolCalls) > 0 {
+			// simulate calling the function & responding to OpenAI
+			messages = append(messages, respMsg)
+
+			fmt.Printf(
+				"OpenAI called us back wanting to invoke our function '%v' with params '%v'\n",
+				respMsg.ToolCalls[0].Function.Name,
+				respMsg.ToolCalls[0].Function.Arguments)
+
+			messages = append(messages, openai.ChatCompletionMessage{
+				Role:       openai.ChatMessageRoleTool,
+				Content:    "Sunny and 36 degrees.",
+				Name:       respMsg.ToolCalls[0].Function.Name,
+				ToolCallID: respMsg.ToolCalls[0].ID,
+			})
+
+			fmt.Printf(
+				"Sending OpenAI our '%v()' function's response and requesting the reply to the original question...\n",
+				"get_current_weather") // -> f.Name)
+
+			resp, err = client.CreateChatCompletion(ctx,
+				openai.ChatCompletionRequest{
+					Model:       cfg.Model,
+					Temperature: cfg.Temperature,
+					Messages:    messages,
+					Tools:       tools,
+				},
+			)
+			if err != nil {
+				log.Fatalf("Sending tool request ERROR: %v", err)
+			}
+		}
+
 		response := resp.Choices[0].Message.Content
 		log.Println(response)
 
@@ -92,6 +131,8 @@ func loadChatConfig(path string) (*chatConfig, error) {
 }
 
 func initAiClient() {
+	ctx = context.Background()
+
 	// ai client
 	baseURL := os.Getenv("OPENAI_URL")
 	if baseURL == "" {
@@ -114,6 +155,34 @@ func initAiClient() {
 	client = openai.NewClientWithConfig(config)
 
 	messages = append(messages, openai.ChatCompletionMessage{Role: "system", Content: cfg.System})
+
+	// some tools
+	// describe the function & its inputs
+	params := jsonschema.Definition{
+		Type: jsonschema.Object,
+		Properties: map[string]jsonschema.Definition{
+			"location": {
+				Type:        jsonschema.String,
+				Description: "The city and state, e.g. San Francisco, CA",
+			},
+			"unit": {
+				Type: jsonschema.String,
+				Enum: []string{"celsius", "fahrenheit"},
+			},
+		},
+		Required: []string{"location"},
+	}
+	f := openai.FunctionDefinition{
+		Name:        "get_current_weather",
+		Description: "Get the current weather in a given location",
+		Parameters:  params,
+	}
+	t := openai.Tool{
+		Type:     openai.ToolTypeFunction,
+		Function: &f,
+	}
+
+	tools = append(tools, t)
 }
 
 func main() {

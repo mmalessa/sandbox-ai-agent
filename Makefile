@@ -31,8 +31,8 @@ shell: ## Enter application go-client container
 # https://ollama.com/library
 .PHONY: get-models ## Download Ollama models
 get-models:
-#    @$(DC) exec -it ollama ollama pull llama3.2
-	@$(DC) exec -it ollama ollama pull gemma3
+	@$(DC) exec -it ollama ollama pull llama3.1
+	#@$(DC) exec -it ollama ollama pull gemma3
 
 
 .PHONY: go-build
