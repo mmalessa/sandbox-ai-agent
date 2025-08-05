@@ -25,7 +25,23 @@ services:
     restart: unless-stopped
     tty: true
 
+  weaviate:
+    image: semitechnologies/weaviate:1.25.9
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      QUERY_DEFAULTS_LIMIT: 25
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: 'true'
+      DEFAULT_VECTORIZER_MODULE: 'none'
+      ENABLE_MODULES: ''
+      PERSISTENCE_DATA_PATH: '/var/lib/weaviate'
+      CLUSTER_HOSTNAME: 'node1'
+    volumes:
+      - weaviate_data:/var/lib/weaviate
+
 volumes:
   ollama_models:
   gopkg:
   gobin:
+  weaviate_data:
