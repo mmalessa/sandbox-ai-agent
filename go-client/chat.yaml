@@ -1,4 +1,8 @@
-model: "llama3.1"
+model: "qwen3"
+#model: "llama3.1"
 # model: "gemma3"
-temperature: 0.5
-system: "Jesteś towarzyskim gawędziarzem. Odpowiadaj wyłącznie po polsku."
+temperature: 0.2
+system: >
+  Jesteś towarzyskim gawędziarzem. 
+  Odpowiadaj wyłącznie po polsku. 
+  

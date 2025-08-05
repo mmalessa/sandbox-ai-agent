@@ -44,6 +44,16 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Println("New WebSocket connection")
 
+	for _, m := range messages {
+		if m.Role == openai.ChatMessageRoleSystem {
+			continue
+		}
+		if err := conn.WriteMessage(websocket.TextMessage, []byte(m.Content)); err != nil {
+			log.Println("Write error:", err)
+			break
+		}
+	}
+
 	for {
 		_, inputMsg, err := conn.ReadMessage()
 		if err != nil {
@@ -55,7 +65,7 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 		messages = append(messages, openai.ChatCompletionMessage{Role: "user", Content: string(inputMsg)})
 
 		// response logic
-		log.Println("Sending to AI")
+		log.Printf("Sending to AI: %s", inputMsg)
 		resp, err := client.CreateChatCompletion(
 			ctx,
 			openai.ChatCompletionRequest{
@@ -63,6 +73,7 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 				Temperature: cfg.Temperature,
 				Messages:    messages,
 				Tools:       tools,
+				ToolChoice:  "auto",
 			},
 		)
 		if err != nil {
@@ -70,46 +81,54 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		respMsg := resp.Choices[0].Message
+
 		if len(respMsg.ToolCalls) > 0 {
-			// simulate calling the function & responding to OpenAI
-			messages = append(messages, respMsg)
 
-			fmt.Printf(
-				"OpenAI called us back wanting to invoke our function '%v' with params '%v'\n",
-				respMsg.ToolCalls[0].Function.Name,
-				respMsg.ToolCalls[0].Function.Arguments)
+			log.Printf("ToolCalls length: %d\n", len(respMsg.ToolCalls))
+			toolCall := respMsg.ToolCalls[0]
 
-			messages = append(messages, openai.ChatCompletionMessage{
-				Role:       openai.ChatMessageRoleTool,
-				Content:    "Sunny and 36 degrees.",
-				Name:       respMsg.ToolCalls[0].Function.Name,
-				ToolCallID: respMsg.ToolCalls[0].ID,
-			})
+			if toolCall.Function.Name == "get_current_weather" {
+				// simulate calling the function & responding to OpenAI
 
-			fmt.Printf(
-				"Sending OpenAI our '%v()' function's response and requesting the reply to the original question...\n",
-				"get_current_weather") // -> f.Name)
+				messages = append(messages, respMsg)
 
-			resp, err = client.CreateChatCompletion(ctx,
-				openai.ChatCompletionRequest{
-					Model:       cfg.Model,
-					Temperature: cfg.Temperature,
-					Messages:    messages,
-					Tools:       tools,
-				},
-			)
-			if err != nil {
-				log.Fatalf("Sending tool request ERROR: %v", err)
+				log.Printf(
+					"OpenAI called us back wanting to invoke our function '%v' with params '%v'\n",
+					toolCall.Function.Name,
+					toolCall.Function.Arguments)
+
+				messages = append(messages, openai.ChatCompletionMessage{
+					Role:       openai.ChatMessageRoleTool,
+					Content:    "Sunny and 36 degrees.",
+					Name:       toolCall.Function.Name,
+					ToolCallID: toolCall.ID,
+				})
+
+				log.Printf(
+					"Sending OpenAI our '%v()' function's response and requesting the reply to the original question...\n",
+					toolCall.Function.Name)
+
+				resp, err = client.CreateChatCompletion(ctx,
+					openai.ChatCompletionRequest{
+						Model:       cfg.Model,
+						Temperature: cfg.Temperature,
+						Messages:    messages,
+						Tools:       tools,
+					},
+				)
+				if err != nil {
+					log.Fatalf("Sending tool request ERROR: %v", err)
+				}
+				respMsg = resp.Choices[0].Message
 			}
 		}
 
-		response := resp.Choices[0].Message.Content
-		log.Println(response)
+		messages = append(messages, respMsg)
 
-		messages = append(messages, openai.ChatCompletionMessage{Role: "assistant", Content: response})
+		log.Println(respMsg.Content)
 
 		// send response to web client
-		if err := conn.WriteMessage(websocket.TextMessage, []byte(response)); err != nil {
+		if err := conn.WriteMessage(websocket.TextMessage, []byte(respMsg.Content)); err != nil {
 			log.Println("Write error:", err)
 			break
 		}
@@ -135,9 +154,6 @@ func initAiClient() {
 
 	// ai client
 	baseURL := os.Getenv("OPENAI_URL")
-	if baseURL == "" {
-		baseURL = "http://localhost:11434/v1"
-	}
 
 	apiToken := os.Getenv("OPENAI_API_TOKEN")
 	if apiToken == "" {
@@ -151,7 +167,10 @@ func initAiClient() {
 	}
 
 	config := openai.DefaultConfig(apiToken)
-	config.BaseURL = baseURL
+	if baseURL != "" {
+		// baseURL = "http://localhost:11434/v1"
+		config.BaseURL = baseURL
+	}
 	client = openai.NewClientWithConfig(config)
 
 	messages = append(messages, openai.ChatCompletionMessage{Role: "system", Content: cfg.System})
@@ -174,7 +193,7 @@ func initAiClient() {
 	}
 	f := openai.FunctionDefinition{
 		Name:        "get_current_weather",
-		Description: "Get the current weather in a given location",
+		Description: "Get the current weather in a given location. Only use it when the question is about the weather.",
 		Parameters:  params,
 	}
 	t := openai.Tool{
