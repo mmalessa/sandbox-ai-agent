@@ -9,19 +9,21 @@ import (
 )
 
 type wschat struct {
-	port      int
-	staticDir string
+	port         int
+	staticDir    string
+	interlocutor func(inputMsg string) (string, error)
 }
 
-func New(port int) *wschat {
+func New(port int, interlocutor func(inputMsg string) (string, error)) *wschat {
 	ch := &wschat{
-		port:      port,
-		staticDir: "./static",
+		port:         port,
+		staticDir:    "./static",
+		interlocutor: interlocutor,
 	}
 	return ch
 }
 
-func (ch *wschat) Serve(handler func(c *websocket.Conn, w http.ResponseWriter, r *http.Request)) {
+func (ch *wschat) Serve() {
 
 	upgrader := websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool {
@@ -37,7 +39,25 @@ func (ch *wschat) Serve(handler func(c *websocket.Conn, w http.ResponseWriter, r
 			return
 		}
 		defer conn.Close()
-		handler(conn, w, r)
+		for {
+			_, receivedMsg, err := conn.ReadMessage()
+			if err != nil {
+				log.Println("Chat read error:", err)
+				break
+			}
+			log.Printf("Received: %s", receivedMsg)
+
+			responseMsg, err := ch.interlocutor(string(receivedMsg))
+			if err != nil {
+				log.Println("Interlocutor error:", err)
+			}
+
+			if err := conn.WriteMessage(websocket.TextMessage, []byte(responseMsg)); err != nil {
+				log.Println("Chat write error:", err)
+				break
+			}
+			log.Printf("Response: %s", responseMsg)
+		}
 	})
 
 	log.Printf("Serwer starting on :%d\n", ch.port)

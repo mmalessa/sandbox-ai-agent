@@ -36,6 +36,7 @@ func New() *aiclient {
 		ctx:      context.Background(),
 		baseURL:  os.Getenv("OPENAI_URL"),
 		apiToken: apiToken,
+		cfg:      &chatConfig{},
 	}
 	a.init()
 	return a
@@ -48,13 +49,13 @@ func (a *aiclient) init() {
 		log.Fatal("error loading YAML:", err)
 	}
 
-	// config := openai.DefaultConfig(a.apiToken)
-	// if a.baseURL != "" {
-	// 	config.BaseURL = a.baseURL
-	// }
-	// a.client = openai.NewClientWithConfig(config)
+	config := openai.DefaultConfig(a.apiToken)
+	if a.baseURL != "" {
+		config.BaseURL = a.baseURL
+	}
+	a.client = openai.NewClientWithConfig(config)
 
-	// messages = append(messages, openai.ChatCompletionMessage{Role: "system", Content: cfg.System})
+	a.messages = append(a.messages, openai.ChatCompletionMessage{Role: "system", Content: a.cfg.System})
 
 	// some tools
 	// describe the function & its inputs
@@ -94,10 +95,11 @@ func (a *aiclient) loadChatConfig(path string) error {
 	if err := yaml.Unmarshal(data, a.cfg); err != nil {
 		return fmt.Errorf("YAML parsing error: %w", err)
 	}
+	_ = data
 	return nil
 }
 
-func (a *aiclient) Send(inputMsg string) (string, error) {
+func (a *aiclient) Ask(inputMsg string) (string, error) {
 	// response logic
 	log.Printf("Sending to AI: %s", inputMsg)
 
