@@ -4,7 +4,6 @@
 make up
 make get-models
 make go-build
-make shell
-# ./bin/go-client
+make chat
 ```
 Browser: http://localhost:8000
