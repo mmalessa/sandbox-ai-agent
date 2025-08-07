@@ -28,6 +28,9 @@ down: ## Down all
 shell: ## Enter application go-client container
 	@$(DC) exec -it go-client bash
 
+chat: ## Start chat
+	@$(DC) exec -it go-client ./bin/go-client chat
+
 # https://ollama.com/library
 .PHONY: get-models ## Download Ollama models
 get-models:

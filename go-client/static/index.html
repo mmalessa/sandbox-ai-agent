@@ -5,7 +5,7 @@
 <title>Simple Chat</title>
 <style>
   body { font-family: sans-serif; max-width: 1024px; margin: auto; }
-  #chat { border: 1px solid #ccc; padding: 10px; height: 600px; overflow-y: auto; }
+  #chat { border: 1px solid #ccc; padding: 10px; height: 600px; overflow-y: auto; white-space: pre-wrap; }
   think { font-size: small; font-style: italic; color: gray; display: block; margin: 10px 0px 5px 30px; }
   .msg { margin: 5px 0; }
   .me { color: black; margin-bottom: 20px; font-weight: bold;}
@@ -15,7 +15,8 @@
 <body>
 <h1>Chat WebSocket</h1>
 <div id="chat"></div>
-<input id="msgInput" type="text" placeholder="Write message..." style="width: 80%;">
+
+<textarea id="msgInput" placeholder="Write message..." style="width: 80%; height: 60px;"></textarea>
 <button id="sendBtn">Send</button>
 
 <script>
@@ -45,8 +46,9 @@ btn.onclick = () => {
     }
 };
 
-input.addEventListener("keypress", function(e) {
-    if (e.key === "Enter") {
+input.addEventListener("keydown", function(e) {
+    if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault(); // Zapobiega przejściu do nowej linii
         btn.click();
     }
 });
