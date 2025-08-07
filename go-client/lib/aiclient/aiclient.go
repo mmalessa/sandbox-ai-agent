@@ -7,6 +7,7 @@ import (
 	"os"
 
 	openai "github.com/sashabaranov/go-openai"
+	"github.com/sashabaranov/go-openai/jsonschema"
 	"gopkg.in/yaml.v3"
 )
 
@@ -23,6 +24,7 @@ type aiclient struct {
 	cfg      *chatConfig
 	client   *openai.Client
 	messages []openai.ChatCompletionMessage
+	tools    []openai.Tool
 }
 
 func New() *aiclient {
@@ -59,31 +61,31 @@ func (a *aiclient) init() {
 
 	// some tools
 	// describe the function & its inputs
-	// params := jsonschema.Definition{
-	// 	Type: jsonschema.Object,
-	// 	Properties: map[string]jsonschema.Definition{
-	// 		"location": {
-	// 			Type:        jsonschema.String,
-	// 			Description: "The city and state, e.g. San Francisco, CA",
-	// 		},
-	// 		"unit": {
-	// 			Type: jsonschema.String,
-	// 			Enum: []string{"celsius", "fahrenheit"},
-	// 		},
-	// 	},
-	// 	Required: []string{"location"},
-	// }
-	// f := openai.FunctionDefinition{
-	// 	Name:        "get_current_weather",
-	// 	Description: "Get the current weather in a given location. Only use it when the question is about the weather.",
-	// 	Parameters:  params,
-	// }
-	// t := openai.Tool{
-	// 	Type:     openai.ToolTypeFunction,
-	// 	Function: &f,
-	// }
+	params := jsonschema.Definition{
+		Type: jsonschema.Object,
+		Properties: map[string]jsonschema.Definition{
+			"location": {
+				Type:        jsonschema.String,
+				Description: "The city and state, e.g. San Francisco, CA",
+			},
+			"unit": {
+				Type: jsonschema.String,
+				Enum: []string{"celsius", "fahrenheit"},
+			},
+		},
+		Required: []string{"location"},
+	}
+	f := openai.FunctionDefinition{
+		Name:        "get_current_weather",
+		Description: "Get the current weather in a given location. Only use it when the question is about the weather.",
+		Parameters:  params,
+	}
+	t := openai.Tool{
+		Type:     openai.ToolTypeFunction,
+		Function: &f,
+	}
 
-	// tools = append(tools, t)
+	a.tools = append(a.tools, t)
 }
 
 func (a *aiclient) loadChatConfig(path string) error {
@@ -105,14 +107,13 @@ func (a *aiclient) Ask(inputMsg string) (string, error) {
 
 	a.messages = append(a.messages, openai.ChatCompletionMessage{Role: "user", Content: string(inputMsg)})
 
-	resp, err := a.client.CreateChatCompletion(
-		a.ctx,
+	resp, err := a.request(
 		openai.ChatCompletionRequest{
 			Model:       a.cfg.Model,
 			Temperature: a.cfg.Temperature,
 			Messages:    a.messages,
-			// Tools:       tools,
-			// ToolChoice:  "auto",
+			Tools:       a.tools,
+			ToolChoice:  "auto",
 		},
 	)
 	if err != nil {
@@ -124,4 +125,47 @@ func (a *aiclient) Ask(inputMsg string) (string, error) {
 	a.messages = append(a.messages, respMsg)
 
 	return respMsg.Content, nil
+}
+
+func (a *aiclient) request(request openai.ChatCompletionRequest) (openai.ChatCompletionResponse, error) {
+	response, err := a.client.CreateChatCompletion(a.ctx, request)
+
+	// check ToolCalls
+	respMsg := response.Choices[0].Message
+	if len(respMsg.ToolCalls) > 0 {
+		log.Println("Run ToolCalls")
+		tollCall := respMsg.ToolCalls[0]
+		// for _, toolCall in respMsg.ToolCalls {
+		response, err = a.callFunction(tollCall)
+		// }
+	}
+
+	return response, err
+}
+
+func (a *aiclient) callFunction(toolCall openai.ToolCall) (openai.ChatCompletionResponse, error) {
+	if toolCall.Function.Name == "get_current_weather" {
+		a.messages = append(a.messages, openai.ChatCompletionMessage{
+			Role:       openai.ChatMessageRoleTool,
+			Content:    "Sunny and 36 degrees.",
+			Name:       toolCall.Function.Name,
+			ToolCallID: toolCall.ID,
+		})
+
+		log.Printf(
+			"Sending OpenAI our '%v()' function's response and requesting the reply to the original question...\n",
+			toolCall.Function.Name,
+		)
+
+		return a.client.CreateChatCompletion(
+			a.ctx,
+			openai.ChatCompletionRequest{
+				Model:       a.cfg.Model,
+				Temperature: a.cfg.Temperature,
+				Messages:    a.messages,
+				// Tools:       a.tools,
+			},
+		)
+	}
+	return openai.ChatCompletionResponse{}, fmt.Errorf("FIXME error")
 }
