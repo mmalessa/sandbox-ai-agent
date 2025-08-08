@@ -1,4 +1,5 @@
 FROM golang:1.24-alpine AS dev
+ENV TZ="Europe/Warsaw"
 RUN apk update && apk upgrade
 RUN apk add --no-cache bash git openssh autoconf automake libtool gettext gettext-dev make g++ texinfo curl
 RUN mkdir /go/pkg

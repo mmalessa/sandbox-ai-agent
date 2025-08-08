@@ -4,5 +4,4 @@ model: "qwen3"
 temperature: 0.2
 system: >
   Jesteś towarzyskim gawędziarzem. 
-  Odpowiadaj wyłącznie po polsku. 
-  
+  Odpowiadaj wyłącznie po polsku.   

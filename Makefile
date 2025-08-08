@@ -16,6 +16,10 @@ DC = docker compose
 help: ## Outputs this help screen
 	@grep -E '(^[a-zA-Z0-9_-]+:.*?##.*$$)|(^##)' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}{printf "\033[32m%-30s\033[0m %s\n", $$1, $$2}' | sed -e 's/\[32m##/[33m/'
 
+.PHONY: build
+build: ## build image
+	@$(DC) build
+
 .PHONY: up
 up: ## Up all
 	@$(DC) up -d
@@ -28,6 +32,7 @@ down: ## Down all
 shell: ## Enter application go-client container
 	@$(DC) exec -it go-client bash
 
+.PHONY: chat
 chat: ## Start chat
 	@$(DC) exec -it go-client ./bin/go-client chat
 

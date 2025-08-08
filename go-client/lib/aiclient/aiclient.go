@@ -89,7 +89,7 @@ func (a *aiclient) defineTools() {
 
 	fTime := openai.FunctionDefinition{
 		Name:        "get_current_time",
-		Description: "Get the current time.",
+		Description: "Get the current time. Response is in YYYY-MM-DD hh:mm:ss format",
 		Parameters: jsonschema.Definition{
 			Type:       jsonschema.Object,
 			Properties: map[string]jsonschema.Definition{},
@@ -166,11 +166,21 @@ func (a *aiclient) request(request openai.ChatCompletionRequest) (openai.ChatCom
 func (a *aiclient) handleToolCalls(toolCalls []openai.ToolCall) (openai.ChatCompletionResponse, error) {
 	for _, toolCall := range toolCalls {
 		log.Printf("Call: %s(#%v)", toolCall.Function.Name, toolCall.Function.Arguments)
-		a.callFunction(toolCall)
+		result, err := a.callFunction(toolCall)
+		if err != nil {
+			return openai.ChatCompletionResponse{}, err
+		}
+		log.Printf("Result (%s): %s", toolCall.Function.Name, result)
+		a.messages = append(a.messages, openai.ChatCompletionMessage{
+			Role:       openai.ChatMessageRoleTool,
+			Content:    result,
+			Name:       toolCall.Function.Name,
+			ToolCallID: toolCall.ID,
+		})
 	}
 
-	log.Printf("Sending final request to AI")
-	log.Printf("%#v\n", a.messages)
+	log.Printf("Sending request to AI with results(s) from tool(s)")
+	// log.Printf("%#v\n", a.messages)
 	return a.client.CreateChatCompletion(
 		a.ctx,
 		openai.ChatCompletionRequest{
@@ -181,23 +191,14 @@ func (a *aiclient) handleToolCalls(toolCalls []openai.ToolCall) (openai.ChatComp
 	)
 }
 
-func (a *aiclient) callFunction(toolCall openai.ToolCall) {
-	log.Println("Call function:", toolCall.Function.Name)
+func (a *aiclient) callFunction(toolCall openai.ToolCall) (string, error) {
 	switch toolCall.Function.Name {
 	case "get_current_weather":
-		a.messages = append(a.messages, openai.ChatCompletionMessage{
-			Role:       openai.ChatMessageRoleTool,
-			Content:    "Sunny and 36 degrees.",
-			Name:       toolCall.Function.Name,
-			ToolCallID: toolCall.ID,
-		})
+		return "Sunny and 36 degrees.", nil
 	case "get_current_time":
 		t := time.Now()
-		a.messages = append(a.messages, openai.ChatCompletionMessage{
-			Role:       openai.ChatMessageRoleTool,
-			Content:    t.Format("2006-01-02 15:04:05"),
-			Name:       toolCall.Function.Name,
-			ToolCallID: toolCall.ID,
-		})
+		return t.Format("2006-01-02 15:04:05"), nil
+	default:
+		return "", fmt.Errorf("Unknown function name:", toolCall.Function.Name)
 	}
 }
