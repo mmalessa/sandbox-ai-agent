@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	openai "github.com/sashabaranov/go-openai"
 	"github.com/sashabaranov/go-openai/jsonschema"
@@ -59,33 +60,48 @@ func (a *aiclient) init() {
 
 	a.messages = append(a.messages, openai.ChatCompletionMessage{Role: "system", Content: a.cfg.System})
 
-	// some tools
-	// describe the function & its inputs
-	params := jsonschema.Definition{
-		Type: jsonschema.Object,
-		Properties: map[string]jsonschema.Definition{
-			"location": {
-				Type:        jsonschema.String,
-				Description: "The city and state, e.g. San Francisco, CA",
-			},
-			"unit": {
-				Type: jsonschema.String,
-				Enum: []string{"celsius", "fahrenheit"},
-			},
-		},
-		Required: []string{"location"},
-	}
-	f := openai.FunctionDefinition{
-		Name:        "get_current_weather",
-		Description: "Get the current weather in a given location. Only use it when the question is about the weather.",
-		Parameters:  params,
-	}
-	t := openai.Tool{
-		Type:     openai.ToolTypeFunction,
-		Function: &f,
-	}
+	a.defineTools()
 
-	a.tools = append(a.tools, t)
+}
+
+func (a *aiclient) defineTools() {
+	fWeather := openai.FunctionDefinition{
+		Name:        "get_current_weather",
+		Description: "Get the current weather in a given location. Temperature always in celsius.",
+		Parameters: jsonschema.Definition{
+			Type: jsonschema.Object,
+			Properties: map[string]jsonschema.Definition{
+				"location": {
+					Type:        jsonschema.String,
+					Description: "The city and state, e.g. San Francisco, CA",
+				},
+			},
+			Required: []string{"location"},
+		},
+	}
+	a.tools = append(
+		a.tools,
+		openai.Tool{
+			Type:     openai.ToolTypeFunction,
+			Function: &fWeather,
+		},
+	)
+
+	fTime := openai.FunctionDefinition{
+		Name:        "get_current_time",
+		Description: "Get the current time.",
+		Parameters: jsonschema.Definition{
+			Type:       jsonschema.Object,
+			Properties: map[string]jsonschema.Definition{},
+		},
+	}
+	a.tools = append(
+		a.tools,
+		openai.Tool{
+			Type:     openai.ToolTypeFunction,
+			Function: &fTime,
+		},
+	)
 }
 
 func (a *aiclient) loadChatConfig(path string) error {
@@ -102,12 +118,11 @@ func (a *aiclient) loadChatConfig(path string) error {
 }
 
 func (a *aiclient) Ask(inputMsg string) (string, error) {
-	// response logic
-	log.Printf("Sending to AI: %s", inputMsg)
+	log.Printf("Sending request to AI: %s", inputMsg)
 
-	a.messages = append(a.messages, openai.ChatCompletionMessage{Role: "user", Content: string(inputMsg)})
+	a.messages = append(a.messages, openai.ChatCompletionMessage{Role: openai.ChatMessageRoleUser, Content: string(inputMsg)})
 
-	resp, err := a.request(
+	response, err := a.request(
 		openai.ChatCompletionRequest{
 			Model:       a.cfg.Model,
 			Temperature: a.cfg.Temperature,
@@ -121,51 +136,68 @@ func (a *aiclient) Ask(inputMsg string) (string, error) {
 		return "", err
 	}
 
-	respMsg := resp.Choices[0].Message
-	a.messages = append(a.messages, respMsg)
-
-	return respMsg.Content, nil
+	return response.Choices[0].Message.Content, nil
 }
 
 func (a *aiclient) request(request openai.ChatCompletionRequest) (openai.ChatCompletionResponse, error) {
-	response, err := a.client.CreateChatCompletion(a.ctx, request)
+	var err error
+	var response openai.ChatCompletionResponse
 
-	// check ToolCalls
+	response, err = a.client.CreateChatCompletion(a.ctx, request)
+	if err != nil {
+		return openai.ChatCompletionResponse{}, err
+	}
+
 	respMsg := response.Choices[0].Message
+	log.Printf("Response from AI: %s", respMsg.Content)
+
+	a.messages = append(a.messages, respMsg)
+
 	if len(respMsg.ToolCalls) > 0 {
-		log.Println("Run ToolCalls")
-		tollCall := respMsg.ToolCalls[0]
-		// for _, toolCall in respMsg.ToolCalls {
-		response, err = a.callFunction(tollCall)
-		// }
+		response, err = a.handleToolCalls(respMsg.ToolCalls)
+		if err != nil {
+			return openai.ChatCompletionResponse{}, err
+		}
 	}
 
 	return response, err
 }
 
-func (a *aiclient) callFunction(toolCall openai.ToolCall) (openai.ChatCompletionResponse, error) {
-	if toolCall.Function.Name == "get_current_weather" {
+func (a *aiclient) handleToolCalls(toolCalls []openai.ToolCall) (openai.ChatCompletionResponse, error) {
+	for _, toolCall := range toolCalls {
+		log.Printf("Call: %s(#%v)", toolCall.Function.Name, toolCall.Function.Arguments)
+		a.callFunction(toolCall)
+	}
+
+	log.Printf("Sending final request to AI")
+	log.Printf("%#v\n", a.messages)
+	return a.client.CreateChatCompletion(
+		a.ctx,
+		openai.ChatCompletionRequest{
+			Model:       a.cfg.Model,
+			Temperature: a.cfg.Temperature,
+			Messages:    a.messages,
+		},
+	)
+}
+
+func (a *aiclient) callFunction(toolCall openai.ToolCall) {
+	log.Println("Call function:", toolCall.Function.Name)
+	switch toolCall.Function.Name {
+	case "get_current_weather":
 		a.messages = append(a.messages, openai.ChatCompletionMessage{
 			Role:       openai.ChatMessageRoleTool,
 			Content:    "Sunny and 36 degrees.",
 			Name:       toolCall.Function.Name,
 			ToolCallID: toolCall.ID,
 		})
-
-		log.Printf(
-			"Sending OpenAI our '%v()' function's response and requesting the reply to the original question...\n",
-			toolCall.Function.Name,
-		)
-
-		return a.client.CreateChatCompletion(
-			a.ctx,
-			openai.ChatCompletionRequest{
-				Model:       a.cfg.Model,
-				Temperature: a.cfg.Temperature,
-				Messages:    a.messages,
-				// Tools:       a.tools,
-			},
-		)
+	case "get_current_time":
+		t := time.Now()
+		a.messages = append(a.messages, openai.ChatCompletionMessage{
+			Role:       openai.ChatMessageRoleTool,
+			Content:    t.Format("2006-01-02 15:04:05"),
+			Name:       toolCall.Function.Name,
+			ToolCallID: toolCall.ID,
+		})
 	}
-	return openai.ChatCompletionResponse{}, fmt.Errorf("FIXME error")
 }
