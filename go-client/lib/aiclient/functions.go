@@ -94,3 +94,31 @@ var toolFunctions []functionDef = []functionDef{
 		},
 	},
 }
+
+/*
+
+TODO - recipe book response example
+```json
+{
+  "Name": "Jajecznica na boczku",
+  "Description": "Jajecznica zrobiona na boczku",
+  "Ingredients": [
+    "3 jajka",
+    "100 g sera (np. ser feta lub ser wędzony)",
+    "100 g boczku",
+    "1 czapeczka czosnku",
+    "1 łyżka oleju z oliwek",
+    "Sól i pieprz do smaku",
+    "Kromka chleba (opcjonalnie)"
+  ],
+  "Instructions": [
+    "W naczyniu z cienkim dnom rozgrzej olej z oliwek.",
+    "Dodaj pokrojony boczek i czosnek, smaż do zbrązania.",
+    "Wlej jajka i mieszaj, aż zaczną się tworzyć pęcherze.",
+    "Dodaj ser i mieszaj, aż ser rozpuści się.",
+    "Dokładaj sól i pieprz według smaku.",
+    "Jeśli chcesz, możesz złożyć jajecznicę na kromce chleba."
+  ]
+}
+```
+*/
