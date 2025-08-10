@@ -5,10 +5,8 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"time"
 
 	openai "github.com/sashabaranov/go-openai"
-	"github.com/sashabaranov/go-openai/jsonschema"
 	"gopkg.in/yaml.v3"
 )
 
@@ -19,16 +17,20 @@ type chatConfig struct {
 }
 
 type aiclient struct {
-	ctx      context.Context
-	baseURL  string
-	apiToken string
-	cfg      *chatConfig
-	client   *openai.Client
-	messages []openai.ChatCompletionMessage
-	tools    []openai.Tool
+	ctx       context.Context
+	baseURL   string
+	apiToken  string
+	sessionId string
+	cfg       *chatConfig
+	client    *openai.Client
+	messages  []openai.ChatCompletionMessage
+	tools     []openai.Tool
 }
 
-func New(cfgFile string) *aiclient {
+func New(cfgFile string, sessionId string) *aiclient {
+
+	log.Printf("New session with ID %s started", sessionId)
+
 	apiToken := os.Getenv("OPENAI_API_TOKEN")
 	if apiToken == "" {
 		apiToken = "DefaultToken"
@@ -36,10 +38,11 @@ func New(cfgFile string) *aiclient {
 	}
 
 	a := &aiclient{
-		ctx:      context.Background(),
-		baseURL:  os.Getenv("OPENAI_URL"),
-		apiToken: apiToken,
-		cfg:      &chatConfig{},
+		ctx:       context.Background(),
+		baseURL:   os.Getenv("OPENAI_URL"),
+		apiToken:  apiToken,
+		sessionId: sessionId,
+		cfg:       &chatConfig{},
 	}
 	if err := a.loadChatConfig(cfgFile); err != nil {
 		log.Fatal("error loading YAML:", err)
@@ -59,50 +62,16 @@ func (a *aiclient) initAiClient() {
 	a.messages = append(a.messages, openai.ChatCompletionMessage{Role: "system", Content: a.cfg.System})
 
 	a.defineTools()
-}
 
-func (a *aiclient) defineTools() {
-	fWeather := openai.FunctionDefinition{
-		Name:        "get_current_weather",
-		Description: "Get the current weather in a given location. Temperature always in celsius.",
-		Parameters: jsonschema.Definition{
-			Type: jsonschema.Object,
-			Properties: map[string]jsonschema.Definition{
-				"location": {
-					Type:        jsonschema.String,
-					Description: "The city and state, e.g. San Francisco, CA",
-				},
-			},
-			Required: []string{"location"},
-		},
+	var flist []string
+	for _, f := range toolFunctions {
+		flist = append(flist, f.definition.Name)
 	}
-	a.tools = append(
-		a.tools,
-		openai.Tool{
-			Type:     openai.ToolTypeFunction,
-			Function: &fWeather,
-		},
-	)
-
-	fTime := openai.FunctionDefinition{
-		Name:        "get_current_time",
-		Description: "Get the current time. Response is in YYYY-MM-DD hh:mm:ss format",
-		Parameters: jsonschema.Definition{
-			Type:       jsonschema.Object,
-			Properties: map[string]jsonschema.Definition{},
-		},
-	}
-	a.tools = append(
-		a.tools,
-		openai.Tool{
-			Type:     openai.ToolTypeFunction,
-			Function: &fTime,
-		},
-	)
+	log.Printf("Available functions: %#s", flist)
 }
 
 func (a *aiclient) loadChatConfig(path string) error {
-	fmt.Println("Load config file:", path)
+	log.Println("Load config file:", path)
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return fmt.Errorf("cannot read file %s: %w", path, err)
@@ -110,7 +79,7 @@ func (a *aiclient) loadChatConfig(path string) error {
 	if err := yaml.Unmarshal(data, a.cfg); err != nil {
 		return fmt.Errorf("YAML parsing error: %w", err)
 	}
-	fmt.Println("Config file loaded")
+	log.Println("Config file loaded")
 	return nil
 }
 
@@ -177,8 +146,8 @@ func (a *aiclient) handleToolCalls(toolCalls []openai.ToolCall) (openai.ChatComp
 	}
 
 	log.Printf("Sending request to AI with results(s) from tool(s)")
-	// log.Printf("%#v\n", a.messages)
-	return a.client.CreateChatCompletion(
+
+	response, err := a.client.CreateChatCompletion(
 		a.ctx,
 		openai.ChatCompletionRequest{
 			Model:       a.cfg.Model,
@@ -186,16 +155,27 @@ func (a *aiclient) handleToolCalls(toolCalls []openai.ToolCall) (openai.ChatComp
 			Messages:    a.messages,
 		},
 	)
+
+	return response, err
+}
+
+func (a *aiclient) defineTools() {
+	for _, f := range toolFunctions {
+		a.tools = append(
+			a.tools,
+			openai.Tool{
+				Type:     openai.ToolTypeFunction,
+				Function: &f.definition,
+			},
+		)
+	}
 }
 
 func (a *aiclient) callFunction(toolCall openai.ToolCall) (string, error) {
-	switch toolCall.Function.Name {
-	case "get_current_weather":
-		return "Sunny and 36 degrees.", nil
-	case "get_current_time":
-		t := time.Now()
-		return t.Format("2006-01-02 15:04:05"), nil
-	default:
-		return "", fmt.Errorf("Unknown function name:", toolCall.Function.Name)
+	for _, f := range toolFunctions {
+		if f.definition.Name == toolCall.Function.Name {
+			return f.callFn(toolCall, a.sessionId)
+		}
 	}
+	return "", fmt.Errorf("unknown function name: %s", toolCall.Function.Name)
 }

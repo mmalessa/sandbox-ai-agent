@@ -39,6 +39,8 @@ func (ch *wschat) Serve() {
 			return
 		}
 		defer conn.Close()
+
+		log.Println("New WebSocket connection")
 		for {
 			_, receivedMsg, err := conn.ReadMessage()
 			if err != nil {
