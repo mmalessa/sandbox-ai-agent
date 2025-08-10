@@ -28,7 +28,7 @@ type aiclient struct {
 	tools    []openai.Tool
 }
 
-func New() *aiclient {
+func New(cfgFile string) *aiclient {
 	apiToken := os.Getenv("OPENAI_API_TOKEN")
 	if apiToken == "" {
 		apiToken = "DefaultToken"
@@ -41,17 +41,15 @@ func New() *aiclient {
 		apiToken: apiToken,
 		cfg:      &chatConfig{},
 	}
-	a.init()
-	return a
-}
-
-// FIXME
-func (a *aiclient) init() {
-
-	if err := a.loadChatConfig("chat.yaml"); err != nil {
+	if err := a.loadChatConfig(cfgFile); err != nil {
 		log.Fatal("error loading YAML:", err)
 	}
 
+	a.initAiClient()
+	return a
+}
+
+func (a *aiclient) initAiClient() {
 	config := openai.DefaultConfig(a.apiToken)
 	if a.baseURL != "" {
 		config.BaseURL = a.baseURL
@@ -61,7 +59,6 @@ func (a *aiclient) init() {
 	a.messages = append(a.messages, openai.ChatCompletionMessage{Role: "system", Content: a.cfg.System})
 
 	a.defineTools()
-
 }
 
 func (a *aiclient) defineTools() {
@@ -105,15 +102,15 @@ func (a *aiclient) defineTools() {
 }
 
 func (a *aiclient) loadChatConfig(path string) error {
+	fmt.Println("Load config file:", path)
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return fmt.Errorf("cannot read file %s: %w", path, err)
 	}
-
 	if err := yaml.Unmarshal(data, a.cfg); err != nil {
 		return fmt.Errorf("YAML parsing error: %w", err)
 	}
-	_ = data
+	fmt.Println("Config file loaded")
 	return nil
 }
 

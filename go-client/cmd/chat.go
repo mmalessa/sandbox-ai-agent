@@ -18,7 +18,7 @@ func init() {
 }
 
 func cmd_chat(cmd *cobra.Command, args []string) {
-	ai := aiclient.New()
+	ai := aiclient.New(cfgFile)
 	ch := wschat.New(8000, ai.Ask)
 	ch.Serve()
 }

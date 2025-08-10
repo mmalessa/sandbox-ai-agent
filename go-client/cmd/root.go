@@ -13,6 +13,12 @@ var rootCmd = &cobra.Command{
 	Long:  "A simple of AI sandbox",
 }
 
+var cfgFile string
+
+func init() {
+	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "agent-main.yaml", "Config file path")
+}
+
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
