@@ -1,0 +1,7 @@
+## ASK 1
+POST http://localhost:3000/api/ask
+content-type: application/json
+
+{
+    "content": "Cześć Ryśku!"
+}
