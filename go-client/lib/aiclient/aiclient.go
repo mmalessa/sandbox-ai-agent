@@ -5,15 +5,17 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"slices"
 
 	openai "github.com/sashabaranov/go-openai"
 	"gopkg.in/yaml.v3"
 )
 
 type chatConfig struct {
-	Model       string  `yaml:"model"`
-	Temperature float32 `yaml:"temperature"`
-	System      string  `yaml:"system"`
+	Model              string   `yaml:"model"`
+	Temperature        float32  `yaml:"temperature"`
+	SystemMessage      string   `yaml:"systemMessage"`
+	AvailableFunctions []string `yaml:"availableFunctions"`
 }
 
 type aiclient struct {
@@ -59,15 +61,11 @@ func (a *aiclient) initAiClient() {
 	}
 	a.client = openai.NewClientWithConfig(config)
 
-	a.messages = append(a.messages, openai.ChatCompletionMessage{Role: "system", Content: a.cfg.System})
+	a.messages = append(a.messages, openai.ChatCompletionMessage{Role: "system", Content: a.cfg.SystemMessage})
 
 	a.defineTools()
 
-	var flist []string
-	for _, f := range toolFunctions {
-		flist = append(flist, f.definition.Name)
-	}
-	log.Printf("Available functions: %#s", flist)
+	log.Printf("Available functions: %s", a.cfg.AvailableFunctions)
 }
 
 func (a *aiclient) loadChatConfig(path string) error {
@@ -161,13 +159,16 @@ func (a *aiclient) handleToolCalls(toolCalls []openai.ToolCall) (openai.ChatComp
 
 func (a *aiclient) defineTools() {
 	for _, f := range toolFunctions {
-		a.tools = append(
-			a.tools,
-			openai.Tool{
-				Type:     openai.ToolTypeFunction,
-				Function: &f.definition,
-			},
-		)
+		if slices.Contains(a.cfg.AvailableFunctions, f.definition.Name) {
+			fmt.Println("Available function:", f.definition.Name)
+			a.tools = append(
+				a.tools,
+				openai.Tool{
+					Type:     openai.ToolTypeFunction,
+					Function: &f.definition,
+				},
+			)
+		}
 	}
 }
 

@@ -1,7 +1,15 @@
-## ASK 1
+### ASK 1
 POST http://localhost:3000/api/ask
 content-type: application/json
 
 {
     "content": "Cześć Ryśku!"
+}
+
+### Recipe book
+POST http://localhost:3000/api/ask
+content-type: application/json
+
+{
+    "content": "Podaj mi przepis na potrawę: sznycel po wiedeńsku"
 }

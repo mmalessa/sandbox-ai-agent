@@ -6,6 +6,7 @@ import (
 	"go-client/lib/aiclient"
 	"go-client/lib/httptools"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -61,6 +62,14 @@ func cmd_http(cmd *cobra.Command, args []string) {
 			}
 		})
 	})
-	http.ListenAndServe(":3000", r)
+
+	srv := &http.Server{
+		Addr:         ":3000",
+		Handler:      r,
+		ReadTimeout:  5 * time.Second,   // maksymalny czas na odczyt żądania
+		WriteTimeout: 10 * time.Second,  // maksymalny czas na zapis odpowiedzi
+		IdleTimeout:  600 * time.Second, // czas utrzymywania połączenia keep-alive
+	}
+	srv.ListenAndServe()
 
 }
