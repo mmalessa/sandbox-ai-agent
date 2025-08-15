@@ -47,7 +47,7 @@ func (ch *wschat) Serve() {
 				log.Println("Chat read error:", err)
 				break
 			}
-			log.Printf("Received: %s", receivedMsg)
+			log.Printf("Received from chat: %s", receivedMsg)
 
 			responseMsg, err := ch.interlocutor(string(receivedMsg))
 			if err != nil {
@@ -58,7 +58,7 @@ func (ch *wschat) Serve() {
 				log.Println("Chat write error:", err)
 				break
 			}
-			log.Printf("Response: %s", responseMsg)
+			log.Printf("Response to chat: %s", responseMsg)
 		}
 	})
 

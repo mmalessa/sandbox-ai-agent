@@ -32,7 +32,7 @@ var toolFunctions []functionDef = []functionDef{
 			},
 		},
 		callFn: func(toolCall openai.ToolCall, sessionId string) (string, error) {
-			return "Słonecznie, temperatura 29 stopni Celsjusza", nil
+			return "{\"temperature_celsius\": 23.5,\"pressure_hpa\": 1013,\"conditions\": \"Partly cloudy\",\"humidity_percent\": 65}", nil
 		},
 	},
 	{

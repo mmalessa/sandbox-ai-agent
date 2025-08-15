@@ -118,6 +118,7 @@ func (a *aiclient) request(request openai.ChatCompletionRequest) (openai.ChatCom
 	a.messages = append(a.messages, respMsg)
 
 	if len(respMsg.ToolCalls) > 0 {
+		log.Println("Start using tools")
 		response, err = a.handleToolCalls(respMsg.ToolCalls)
 		if err != nil {
 			return openai.ChatCompletionResponse{}, err
@@ -129,12 +130,12 @@ func (a *aiclient) request(request openai.ChatCompletionRequest) (openai.ChatCom
 
 func (a *aiclient) handleToolCalls(toolCalls []openai.ToolCall) (openai.ChatCompletionResponse, error) {
 	for _, toolCall := range toolCalls {
-		log.Printf("Call: %s(#%v)", toolCall.Function.Name, toolCall.Function.Arguments)
+		log.Printf("Call function: %s(#%v)", toolCall.Function.Name, toolCall.Function.Arguments)
 		result, err := a.callFunction(toolCall)
 		if err != nil {
 			return openai.ChatCompletionResponse{}, err
 		}
-		log.Printf("Result (%s): %s", toolCall.Function.Name, result)
+		log.Printf("Function result (%s): %s", toolCall.Function.Name, result)
 		a.messages = append(a.messages, openai.ChatCompletionMessage{
 			Role:       openai.ChatMessageRoleTool,
 			Content:    result,
@@ -153,6 +154,8 @@ func (a *aiclient) handleToolCalls(toolCalls []openai.ToolCall) (openai.ChatComp
 			Messages:    a.messages,
 		},
 	)
+
+	log.Printf("Response from AI with result(s) from tool(s): %s\n", response.Choices[0].Message.Content)
 
 	return response, err
 }
