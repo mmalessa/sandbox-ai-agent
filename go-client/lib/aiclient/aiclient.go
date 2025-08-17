@@ -3,27 +3,19 @@ package aiclient
 import (
 	"context"
 	"fmt"
+	"go-client/lib/appconfig"
 	"log"
 	"os"
 	"slices"
 
 	openai "github.com/sashabaranov/go-openai"
-	"gopkg.in/yaml.v3"
 )
-
-type chatConfig struct {
-	Model              string   `yaml:"model"`
-	Temperature        float32  `yaml:"temperature"`
-	SystemMessage      string   `yaml:"systemMessage"`
-	AvailableFunctions []string `yaml:"availableFunctions"`
-}
 
 type aiclient struct {
 	ctx       context.Context
 	baseURL   string
 	apiToken  string
 	sessionId string
-	cfg       *chatConfig
 	client    *openai.Client
 	messages  []openai.ChatCompletionMessage
 	tools     []openai.Tool
@@ -44,10 +36,6 @@ func New(cfgFile string, sessionId string) *aiclient {
 		baseURL:   os.Getenv("OPENAI_URL"),
 		apiToken:  apiToken,
 		sessionId: sessionId,
-		cfg:       &chatConfig{},
-	}
-	if err := a.loadChatConfig(cfgFile); err != nil {
-		log.Fatal("error loading YAML:", err)
 	}
 
 	a.initAiClient()
@@ -61,24 +49,11 @@ func (a *aiclient) initAiClient() {
 	}
 	a.client = openai.NewClientWithConfig(config)
 
-	a.messages = append(a.messages, openai.ChatCompletionMessage{Role: "system", Content: a.cfg.SystemMessage})
+	a.messages = append(a.messages, openai.ChatCompletionMessage{Role: "system", Content: appconfig.AppCfg.SystemMessage})
 
 	a.defineTools()
 
-	log.Printf("Available functions: %s", a.cfg.AvailableFunctions)
-}
-
-func (a *aiclient) loadChatConfig(path string) error {
-	log.Println("Load config file:", path)
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return fmt.Errorf("cannot read file %s: %w", path, err)
-	}
-	if err := yaml.Unmarshal(data, a.cfg); err != nil {
-		return fmt.Errorf("YAML parsing error: %w", err)
-	}
-	log.Println("Config file loaded")
-	return nil
+	log.Printf("Available functions: %s", appconfig.AppCfg.AvailableFunctions)
 }
 
 func (a *aiclient) Ask(inputMsg string) (string, error) {
@@ -88,8 +63,8 @@ func (a *aiclient) Ask(inputMsg string) (string, error) {
 
 	response, err := a.request(
 		openai.ChatCompletionRequest{
-			Model:       a.cfg.Model,
-			Temperature: a.cfg.Temperature,
+			Model:       appconfig.AppCfg.Model,
+			Temperature: appconfig.AppCfg.Temperature,
 			Messages:    a.messages,
 			Tools:       a.tools,
 			ToolChoice:  "auto",
@@ -149,8 +124,8 @@ func (a *aiclient) handleToolCalls(toolCalls []openai.ToolCall) (openai.ChatComp
 	response, err := a.client.CreateChatCompletion(
 		a.ctx,
 		openai.ChatCompletionRequest{
-			Model:       a.cfg.Model,
-			Temperature: a.cfg.Temperature,
+			Model:       appconfig.AppCfg.Model,
+			Temperature: appconfig.AppCfg.Temperature,
 			Messages:    a.messages,
 		},
 	)
@@ -162,7 +137,7 @@ func (a *aiclient) handleToolCalls(toolCalls []openai.ToolCall) (openai.ChatComp
 
 func (a *aiclient) defineTools() {
 	for _, f := range toolFunctions {
-		if slices.Contains(a.cfg.AvailableFunctions, f.definition.Name) {
+		if slices.Contains(appconfig.AppCfg.AvailableFunctions, f.definition.Name) {
 			fmt.Println("Available function:", f.definition.Name)
 			a.tools = append(
 				a.tools,

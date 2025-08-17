@@ -1,6 +1,0 @@
-{
-  "name": "go-client",
-  "dockerComposeFile": "../compose.yaml",
-  "service": "go-client",
-  "workspaceFolder": "/go/src/go-client"
-}

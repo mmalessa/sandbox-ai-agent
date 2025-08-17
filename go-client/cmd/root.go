@@ -2,7 +2,10 @@ package cmd
 
 import (
 	"fmt"
+	"log"
 	"os"
+
+	"go-client/lib/appconfig"
 
 	"github.com/spf13/cobra"
 )
@@ -17,6 +20,10 @@ var cfgFile string
 
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "agent-main.yaml", "Config file path")
+
+	if err := appconfig.LoadConfig(cfgFile); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func Execute() {
