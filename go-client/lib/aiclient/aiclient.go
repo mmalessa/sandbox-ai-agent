@@ -19,6 +19,7 @@ type aiclient struct {
 	client    *openai.Client
 	messages  []openai.ChatCompletionMessage
 	tools     []openai.Tool
+	cfg       *appconfig.AppConfig
 }
 
 func New(cfgFile string, sessionId string) *aiclient {
@@ -36,6 +37,7 @@ func New(cfgFile string, sessionId string) *aiclient {
 		baseURL:   os.Getenv("OPENAI_URL"),
 		apiToken:  apiToken,
 		sessionId: sessionId,
+		cfg:       appconfig.AppCfg,
 	}
 
 	a.initAiClient()
@@ -49,11 +51,11 @@ func (a *aiclient) initAiClient() {
 	}
 	a.client = openai.NewClientWithConfig(config)
 
-	a.messages = append(a.messages, openai.ChatCompletionMessage{Role: "system", Content: appconfig.AppCfg.SystemMessage})
+	a.messages = append(a.messages, openai.ChatCompletionMessage{Role: "system", Content: a.cfg.SystemMessage})
 
 	a.defineTools()
 
-	log.Printf("Available functions: %s", appconfig.AppCfg.AvailableFunctions)
+	log.Printf("Available functions: %s", a.cfg.AvailableFunctions)
 }
 
 func (a *aiclient) Ask(inputMsg string) (string, error) {
@@ -63,8 +65,8 @@ func (a *aiclient) Ask(inputMsg string) (string, error) {
 
 	response, err := a.request(
 		openai.ChatCompletionRequest{
-			Model:       appconfig.AppCfg.Model,
-			Temperature: appconfig.AppCfg.Temperature,
+			Model:       a.cfg.Model,
+			Temperature: a.cfg.Temperature,
 			Messages:    a.messages,
 			Tools:       a.tools,
 			ToolChoice:  "auto",
@@ -124,8 +126,8 @@ func (a *aiclient) handleToolCalls(toolCalls []openai.ToolCall) (openai.ChatComp
 	response, err := a.client.CreateChatCompletion(
 		a.ctx,
 		openai.ChatCompletionRequest{
-			Model:       appconfig.AppCfg.Model,
-			Temperature: appconfig.AppCfg.Temperature,
+			Model:       a.cfg.Model,
+			Temperature: a.cfg.Temperature,
 			Messages:    a.messages,
 		},
 	)
@@ -137,7 +139,7 @@ func (a *aiclient) handleToolCalls(toolCalls []openai.ToolCall) (openai.ChatComp
 
 func (a *aiclient) defineTools() {
 	for _, f := range toolFunctions {
-		if slices.Contains(appconfig.AppCfg.AvailableFunctions, f.definition.Name) {
+		if slices.Contains(a.cfg.AvailableFunctions, f.definition.Name) {
 			fmt.Println("Available function:", f.definition.Name)
 			a.tools = append(
 				a.tools,
