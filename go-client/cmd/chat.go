@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"go-client/lib/aiclient"
+	"go-client/lib/appconfig"
 	"go-client/lib/wschat"
 
 	"github.com/google/uuid"
@@ -21,7 +22,9 @@ func init() {
 func cmd_chat(cmd *cobra.Command, args []string) {
 	sessionId := uuid.NewString()
 
-	ai := aiclient.New(cfgFile, sessionId)
-	ch := wschat.New(8000, ai.Ask)
+	httpPort := appconfig.AppCfg.AiChatCfg[chatName].TmpHttpPort
+
+	ai := aiclient.New(cfgFile, sessionId, chatName)
+	ch := wschat.New(httpPort, ai.Ask)
 	ch.Serve()
 }

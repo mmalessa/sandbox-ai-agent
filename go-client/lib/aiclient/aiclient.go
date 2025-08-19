@@ -19,10 +19,10 @@ type aiclient struct {
 	client    *openai.Client
 	messages  []openai.ChatCompletionMessage
 	tools     []openai.Tool
-	cfg       *appconfig.AppConfig
+	cfg       *appconfig.AiChatConfig
 }
 
-func New(cfgFile string, sessionId string) *aiclient {
+func New(cfgFile string, sessionId string, chatName string) *aiclient {
 
 	log.Printf("New session with ID %s started", sessionId)
 
@@ -37,7 +37,7 @@ func New(cfgFile string, sessionId string) *aiclient {
 		baseURL:   os.Getenv("OPENAI_URL"),
 		apiToken:  apiToken,
 		sessionId: sessionId,
-		cfg:       appconfig.AppCfg,
+		cfg:       appconfig.AppCfg.AiChatCfg[chatName],
 	}
 
 	a.initAiClient()

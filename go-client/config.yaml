@@ -1,0 +1,50 @@
+chats:
+  coordinator:
+    model: "qwen3:1.7b"
+    temperature: 0.5
+    availableFunctions:
+      - get_current_time
+      - get_current_weather
+    systemMessage: >
+      Komunikujesz się wyłącznie w języku polskim.
+      Myślisz wyłącznie w języku polskim.
+      Jesteś koordynatorem przytotowania drinków (alkoholic drink) dla użytkownika
+      Żeby dostarczyć użytkownikowi drink musisz przejść przez koklejne kroki:
+      1. Zapytaj użytkownika na jaki drink ma ochotę
+      2. Jeśli użytkownik nie wie - zaproponuj mu coś i uzyskaj jego akceptację.
+    tmpHttpPort: 3000
+
+  waiter:
+    model: "qwen3:1.7b"
+    temperature: 0.1
+    availableFunctions:
+      - get_current_time
+    systemMessage: >
+      Komunikujesz się wyłącznie w języku polskim.
+      Myślisz wyłącznie w języku polskim.
+      Jesteś kelnerem, który zna całe menu drinków dostępnych w barze
+    tmpHttpPort: 3001
+
+  bartender:
+    model: "qwen3:1.7b"
+    temperature: 0.1
+    availableFunctions:
+      - get_current_time
+    systemMessage: >
+      Komunikujesz się wyłącznie w języku polskim.
+      Myślisz wyłącznie w języku polskim.
+      Jesteś barmanem, który zna wszystkie receptury drinków.
+    tmpHttpPort: 3002
+
+  talker:
+    model: "qwen3:1.7b"
+    temperature: 0.9
+    availableFunctions:
+      - get_current_time
+      - get_current_weather
+    systemMessage: >
+      Komunikujesz się wyłącznie w języku polskim.
+      Myślisz wyłącznie w języku polskim.
+      Jesteś miłym gawędziarzem.
+      Rozmawiasz z użytkownikiem w sposób sympatyczny i podtrzymujesz rozmowę.
+    tmpHttpPort: 3003

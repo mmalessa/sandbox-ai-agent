@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"go-client/lib/aiclient"
+	"go-client/lib/appconfig"
 	"go-client/lib/httptools"
 	"net/http"
 	"time"
@@ -27,7 +28,7 @@ func init() {
 func cmd_http(cmd *cobra.Command, args []string) {
 	sessionId := uuid.NewString()
 
-	ai := aiclient.New(cfgFile, sessionId)
+	ai := aiclient.New(cfgFile, sessionId, chatName)
 
 	_ = ai
 
@@ -63,8 +64,9 @@ func cmd_http(cmd *cobra.Command, args []string) {
 		})
 	})
 
+	httpPort := appconfig.AppCfg.AiChatCfg[chatName].TmpHttpPort
 	srv := &http.Server{
-		Addr:         ":3000",
+		Addr:         fmt.Sprintf(":%d", httpPort),
 		Handler:      r,
 		ReadTimeout:  5 * time.Second,   // maksymalny czas na odczyt żądania
 		WriteTimeout: 10 * time.Second,  // maksymalny czas na zapis odpowiedzi

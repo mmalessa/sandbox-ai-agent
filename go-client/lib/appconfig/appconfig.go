@@ -9,11 +9,19 @@ import (
 )
 
 type AppConfig struct {
+	AiChatCfg map[string]*AiChatConfig `yaml:"chats"`
+}
+
+type AiChatConfig struct {
 	Model              string   `yaml:"model"`
 	Temperature        float32  `yaml:"temperature"`
 	SystemMessage      string   `yaml:"systemMessage"`
 	AvailableFunctions []string `yaml:"availableFunctions"`
+	TmpHttpPort        int      `yaml:"tmpHttpPort"`
 }
+
+var AiChatCfg *AiChatConfig
+var AiChatCfgs []*AiChatConfig
 
 var AppCfg *AppConfig
 
@@ -26,6 +34,17 @@ func LoadConfig(path string) error {
 	if err := yaml.Unmarshal(data, &AppCfg); err != nil {
 		return fmt.Errorf("YAML parsing error: %w", err)
 	}
+	if err := validateConfig(); err != nil {
+		return err
+	}
 	log.Println("Config file loaded")
+	return nil
+}
+
+func validateConfig() error {
+	// defaultChat := AppCfg.DefaultChat
+	// if _, ok := AppCfg.AiChatCfg[defaultChat]; !ok {
+	// 	return fmt.Errorf("configuration for chat \"%s\" not found", defaultChat)
+	// }
 	return nil
 }
