@@ -4,6 +4,6 @@
 make up
 make get-models
 make go-build
-make chat
+make chat [--config filename.yaml] [--chat chatname]
 ```
-Browser: http://localhost:8000
+Browser: http://localhost:xxxx (depends on chat name in config file)
