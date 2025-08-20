@@ -7,7 +7,6 @@ import (
 	"go-client/lib/appconfig"
 	"go-client/lib/httptools"
 	"net/http"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -66,11 +65,11 @@ func cmd_http(cmd *cobra.Command, args []string) {
 
 	httpPort := appconfig.AppCfg.AiChatCfg[chatName].TmpHttpPort
 	srv := &http.Server{
-		Addr:         fmt.Sprintf(":%d", httpPort),
-		Handler:      r,
-		ReadTimeout:  5 * time.Second,   // maksymalny czas na odczyt żądania
-		WriteTimeout: 10 * time.Second,  // maksymalny czas na zapis odpowiedzi
-		IdleTimeout:  600 * time.Second, // czas utrzymywania połączenia keep-alive
+		Addr:    fmt.Sprintf(":%d", httpPort),
+		Handler: r,
+		// ReadTimeout: 5 * time.Second, // maksymalny czas na odczyt żądania
+		// WriteTimeout: 10 * time.Second,  // maksymalny czas na zapis odpowiedzi
+		// IdleTimeout: 600 * time.Second, // czas utrzymywania połączenia keep-alive
 	}
 	srv.ListenAndServe()
 

@@ -1,14 +1,22 @@
 package aiclient
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"go-client/lib/appconfig"
+	"go-client/lib/httptools"
+	"html/template"
+	"io"
 	"log"
+	"net/http"
 	"os"
 	"slices"
+	"time"
 
 	openai "github.com/sashabaranov/go-openai"
+	"github.com/sashabaranov/go-openai/jsonschema"
 )
 
 type aiclient struct {
@@ -55,7 +63,7 @@ func (a *aiclient) initAiClient() {
 
 	a.defineTools()
 
-	log.Printf("Available functions: %s", a.cfg.AvailableFunctions)
+	// log.Printf("Available functions: %s", a.cfg.AvailableFunctions)
 }
 
 func (a *aiclient) Ask(inputMsg string) (string, error) {
@@ -138,9 +146,11 @@ func (a *aiclient) handleToolCalls(toolCalls []openai.ToolCall) (openai.ChatComp
 }
 
 func (a *aiclient) defineTools() {
+
+	// built-in functions
 	for _, f := range toolFunctions {
 		if slices.Contains(a.cfg.AvailableFunctions, f.definition.Name) {
-			fmt.Println("Available function:", f.definition.Name)
+			log.Println("Available function:", f.definition.Name)
 			a.tools = append(
 				a.tools,
 				openai.Tool{
@@ -150,13 +160,122 @@ func (a *aiclient) defineTools() {
 			)
 		}
 	}
+
+	// API based functions
+	for k, f := range appconfig.AppCfg.FunctionCfg {
+		if slices.Contains(a.cfg.AvailableFunctions, k) {
+			log.Printf("API based function: %s (%s)", k, f.Url)
+
+			functionDefinition := &openai.FunctionDefinition{
+				Name:        k,
+				Description: f.Description,
+				Parameters: jsonschema.Definition{
+					Type: jsonschema.Object,
+					Properties: map[string]jsonschema.Definition{
+						"request": {
+							Type:        jsonschema.String,
+							Description: "Request from user",
+						},
+					},
+					Required: []string{"request"},
+				},
+			}
+
+			a.tools = append(
+				a.tools,
+				openai.Tool{
+					Type:     openai.ToolTypeFunction,
+					Function: functionDefinition,
+				},
+			)
+		}
+	}
+
 }
 
 func (a *aiclient) callFunction(toolCall openai.ToolCall) (string, error) {
+	// build-in functions
 	for _, f := range toolFunctions {
 		if f.definition.Name == toolCall.Function.Name {
 			return f.callFn(toolCall, a.sessionId)
 		}
 	}
+
+	// API based functions
+	for k, f := range appconfig.AppCfg.FunctionCfg {
+		if k == toolCall.Function.Name {
+			return a.callApiBasedFunction(toolCall, a.sessionId, f)
+		}
+	}
 	return "", fmt.Errorf("unknown function name: %s", toolCall.Function.Name)
+}
+
+func (a *aiclient) callApiBasedFunction(toolCall openai.ToolCall, sessionId string, f *appconfig.FunctionConfig) (string, error) {
+
+	// toolCall args
+	var args map[string]interface{}
+	if err := json.Unmarshal([]byte(toolCall.Function.Arguments), &args); err != nil {
+		log.Fatal(err)
+	}
+	userRequest := args["request"].(string)
+
+	// build request based on template
+	tmpl, err := template.New("msg").Parse(f.RequestTemplate)
+	if err != nil {
+		log.Fatal(err)
+	}
+	values := map[string]interface{}{
+		"Request": userRequest,
+	}
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, values); err != nil {
+		log.Fatal(err)
+	}
+
+	// HTTP Request
+	log.Printf("Function request to: %s", f.Url)
+	requestData := httptools.RequestData{Content: buf.String()}
+	jsonData, err := json.Marshal(requestData)
+	if err != nil {
+		log.Fatal(err)
+		return "", err
+	}
+
+	client := &http.Client{
+		Timeout: 3 * time.Minute,
+	}
+
+	req, err := http.NewRequest("POST", f.Url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		log.Fatal(err)
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-correlationId", sessionId)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Print("client.Do ERROR")
+		// dump, _ := httputil.DumpResponse(resp, true)
+		// fmt.Printf("RAW RESPONSE:\n%s\n", dump)
+		log.Fatal(err)
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Print("io.ReadAll ERROR")
+		log.Fatal(err)
+		return "", err
+	}
+
+	log.Printf("Response from %s for function. Status: %s", f.Url, resp.Status)
+	fmt.Println("Status:", resp.Status)
+	fmt.Println("Body:", string(body))
+
+	responseBody := string(body)
+	log.Printf("Response content: %s", responseBody)
+
+	return responseBody, nil
 }

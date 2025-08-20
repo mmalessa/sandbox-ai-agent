@@ -5,10 +5,12 @@ chats:
     availableFunctions:
       - get_current_time
       - get_current_weather
+      - get_drink_suggestions
+      - get_drink_recipe
     systemMessage: >
       Komunikujesz się wyłącznie w języku polskim.
       Myślisz wyłącznie w języku polskim.
-      Jesteś koordynatorem przytotowania drinków (alkoholic drink) dla użytkownika
+      Jesteś koordynatorem przytotowania drinków (alcoholic drink) dla użytkownika
       Żeby dostarczyć użytkownikowi drink musisz przejść przez koklejne kroki:
       1. Zapytaj użytkownika na jaki drink ma ochotę
       2. Jeśli użytkownik nie wie - zaproponuj mu coś i uzyskaj jego akceptację.
@@ -48,3 +50,16 @@ chats:
       Jesteś miłym gawędziarzem.
       Rozmawiasz z użytkownikiem w sposób sympatyczny i podtrzymujesz rozmowę.
     tmpHttpPort: 3003
+
+functions:
+  get_drink_suggestions:
+    url: "http://localhost:3001/api/ask"
+    description: "Provide alcoholic drink suggestions based on user guidelines"
+    requestTemplate: >
+      Podaj zwięzłą listę proponowanych drinków alkoholowych na podstawie takich wytycznych: {{ .Request }}
+
+  get_drink_recipe:
+    url: "http://localhost:3002/api/ask"
+    description: "Provide a recipe for an alcoholic drink based on the name provided by the user"
+    requestTemplate: >
+      Podaj przepis na następujący drink alkoholowy: {{ .Request }}
