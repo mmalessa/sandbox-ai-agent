@@ -1,6 +1,7 @@
 chats:
   coordinator:
-    model: "qwen3:1.7b"
+    # model: "qwen3:1.7b"
+    model: "mistral-instruct"
     temperature: 0.5
     availableFunctions:
       - get_current_time

@@ -37,11 +37,34 @@ services:
       QUERY_DEFAULTS_LIMIT: 25
       AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: 'true'
       DEFAULT_VECTORIZER_MODULE: 'none'
-      ENABLE_MODULES: ''
+      # DEFAULT_VECTORIZER_MODULE: 'text2vec-transformers'
+      # ENABLE_MODULES: 'text2vec-transformers'
+      # TRANSFORMERS_INFERENCE_API: 'http://weaviate-transformers:8080'
       PERSISTENCE_DATA_PATH: '/var/lib/weaviate'
       CLUSTER_HOSTNAME: 'node1'
     volumes:
       - weaviate_data:/var/lib/weaviate
+    # depends_on:
+    #   - weaviate-transformers
+
+  # weaviate-transformers:
+  #   image: semitechnologies/transformers-inference:sentence-transformers-multi-qa-MiniLM-L6-cos-v1
+  #   restart: unless-stopped
+  #   environment:
+  #     ENABLE_CUDA: '0' # jeśli masz GPU, można dać 1
+  #     # opcjonalnie możesz podać własny model HuggingFace:
+  #     # MODEL: "sentence-transformers/all-MiniLM-L6-v2"
+  #   ports:
+  #     - "8081:8080"
+
+  weaviate-ui:
+    image: naaive/weaviate-ui:latest
+    restart: unless-stopped
+    environment:
+      - WEAVIATE_URL=http://weaviate:8080
+      # - WEAVIATE_API_KEYS=nokey
+    ports:
+      - "7777:7777"
 
 volumes:
   ollama_models:

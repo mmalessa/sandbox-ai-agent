@@ -39,10 +39,15 @@ chat: ## Start chat
 # https://ollama.com/library
 .PHONY: get-models ## Download Ollama models
 get-models:
-#	@$(DC) exec -it ollama ollama pull llama3.1
+# 	@$(DC) exec -it ollama ollama pull llama3
 #	@$(DC) exec -it ollama ollama pull gemma3
 #	@$(DC) exec -it ollama ollama pull qwen3
-	@$(DC) exec -it ollama ollama pull qwen3:1.7b
+# 	@$(DC) exec -it ollama ollama pull qwen3:1.7b
+# 	@$(DC) exec -it ollama ollama pull qwen2.5-coder
+# 	@$(DC) exec -it ollama ollama pull tinyllama
+# 	@$(DC) exec -it ollama ollama pull mistral:7b-instruct
+	@$(DC) exec -it ollama ollama pull nomic-embed-text:latest
+
 
 .PHONY: list-models ## Download Ollama models
 list-models:

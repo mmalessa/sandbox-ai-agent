@@ -279,3 +279,23 @@ func (a *aiclient) callApiBasedFunction(toolCall openai.ToolCall, sessionId stri
 
 	return responseBody, nil
 }
+
+func (a *aiclient) GetEmbeddingOllama(model string, text string) ([]float32, error) {
+
+	resp, err := a.client.CreateEmbeddings(
+		context.Background(),
+		openai.EmbeddingRequest{
+			Model: openai.EmbeddingModel(model),
+			Input: text,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(resp.Data) == 0 {
+		return nil, fmt.Errorf("no embedding for text: %s", text)
+	}
+
+	return resp.Data[0].Embedding, nil
+}
