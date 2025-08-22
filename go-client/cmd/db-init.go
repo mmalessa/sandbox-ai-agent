@@ -3,32 +3,30 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"go-client/lib/wvclient"
 	"log"
 
 	"github.com/spf13/cobra"
 	"github.com/weaviate/weaviate/entities/models"
 )
 
-var dbCreateCocktailCmd = &cobra.Command{
-	Use:   "create-cocktail",
+var dbInitcmd = &cobra.Command{
+	Use:   "init",
 	Short: "Create Coctail class",
-	Run:   cmd_db_create_cocktail,
+	Run:   cmd_db_init,
 }
 
 func init() {
-	dbCmd.AddCommand(dbCreateCocktailCmd)
+	dbCmd.AddCommand(dbInitcmd)
 }
 
-func cmd_db_create_cocktail(cmd *cobra.Command, args []string) {
-	client, err := cmd_db_get_client()
-	if err != nil {
-		log.Fatal(err)
-	}
+func cmd_db_init(cmd *cobra.Command, args []string) {
+	wv := wvclient.New()
 
 	classObj := &models.Class{
 		Class:       "Cocktail",
 		Description: "Alcoholic drink",
-		Vectorizer:  "none", // bo embedding dostarczamy sami
+		// Vectorizer:  "none", // bo embedding dostarczamy sami
 		Properties: []*models.Property{
 			{
 				Name:     "name",
@@ -48,7 +46,7 @@ func cmd_db_create_cocktail(cmd *cobra.Command, args []string) {
 		},
 	}
 
-	err = client.Schema().ClassCreator().WithClass(classObj).Do(context.Background())
+	err := wv.Client.Schema().ClassCreator().WithClass(classObj).Do(context.Background())
 	if err != nil {
 		log.Println(err)
 	} else {

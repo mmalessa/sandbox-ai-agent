@@ -23,4 +23,10 @@ func cmd_dummy(cmd *cobra.Command, args []string) {
 	log.Println("Dummy command here")
 	b, _ := json.MarshalIndent(appconfig.AppCfg, "", "  ")
 	fmt.Println(string(b))
+
+	// _, err := aiclient.GetCocktailList()
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+
 }

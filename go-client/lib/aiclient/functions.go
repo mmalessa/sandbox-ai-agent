@@ -1,11 +1,17 @@
 package aiclient
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
+	"go-client/lib/wvclient"
+	"log"
+	"strings"
 	"time"
 
 	openai "github.com/sashabaranov/go-openai"
 	"github.com/sashabaranov/go-openai/jsonschema"
+	"github.com/weaviate/weaviate-go-client/v4/weaviate/graphql"
 )
 
 type functionDef struct {
@@ -93,32 +99,83 @@ var toolFunctions []functionDef = []functionDef{
 			return "Recipe content - TODO", nil
 		},
 	},
+	{
+		definition: openai.FunctionDefinition{
+			Name:        "cocktail_list",
+			Description: "Get list of alcohol cocktails by entering user description",
+			Parameters: jsonschema.Definition{
+				Type: jsonschema.Object,
+				Properties: map[string]jsonschema.Definition{
+					"user_description": {
+						Type:        jsonschema.String,
+						Description: "User description",
+					},
+				},
+			},
+		},
+		callFn: GetCocktailList,
+	},
 }
 
-/*
+func GetCocktailList(toolCall openai.ToolCall, sessionId string) (string, error) {
+	var args map[string]interface{}
+	if err := json.Unmarshal([]byte(toolCall.Function.Arguments), &args); err != nil {
+		log.Fatal(err)
+	}
+	userRequest := args["user_description"].(string)
 
-TODO - recipe book response example
-```json
-{
-  "Name": "Jajecznica na boczku",
-  "Description": "Jajecznica zrobiona na boczku",
-  "Ingredients": [
-    "3 jajka",
-    "100 g sera (np. ser feta lub ser wędzony)",
-    "100 g boczku",
-    "1 czapeczka czosnku",
-    "1 łyżka oleju z oliwek",
-    "Sól i pieprz do smaku",
-    "Kromka chleba (opcjonalnie)"
-  ],
-  "Instructions": [
-    "W naczyniu z cienkim dnom rozgrzej olej z oliwek.",
-    "Dodaj pokrojony boczek i czosnek, smaż do zbrązania.",
-    "Wlej jajka i mieszaj, aż zaczną się tworzyć pęcherze.",
-    "Dodaj ser i mieszaj, aż ser rozpuści się.",
-    "Dokładaj sól i pieprz według smaku.",
-    "Jeśli chcesz, możesz złożyć jajecznicę na kromce chleba."
-  ]
+	wv := wvclient.New()
+	ctx := context.Background()
+
+	fields := []graphql.Field{
+		{Name: "name"},
+		{Name: "ingredients"},
+	}
+
+	nearText := wv.Client.GraphQL().
+		NearTextArgBuilder().
+		WithConcepts([]string{userRequest})
+
+	result, err := wv.Client.GraphQL().Get().
+		WithClassName("Cocktail").
+		WithFields(fields...).
+		WithNearText(nearText).
+		WithLimit(5).
+		Do(ctx)
+	if err != nil {
+		log.Fatal("WV Fatal", err)
+		return "", err
+	}
+	if len(result.Errors) > 0 {
+		for _, gqlErr := range result.Errors {
+			log.Printf("Błąd GraphQL: %s", gqlErr.Message)
+		}
+		log.Fatal("END")
+	}
+
+	// build response
+	getData, ok := result.Data["Get"].(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("no Get field in GQL response")
+	}
+
+	cocktails, ok := getData["Cocktail"].([]interface{})
+	if !ok {
+		return "", fmt.Errorf("no Cocktail field in GQL response")
+	}
+
+	var builder strings.Builder
+	for _, c := range cocktails {
+		cocktail := c.(map[string]interface{})
+		name := cocktail["name"].(string)
+		ingredients := cocktail["ingredients"].(string)
+
+		builder.WriteString(fmt.Sprintf("%s (%s)\n", name, ingredients))
+	}
+
+	r := builder.String()
+
+	fmt.Println(r)
+
+	return r, nil
 }
-```
-*/

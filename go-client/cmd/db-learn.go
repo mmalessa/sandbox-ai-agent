@@ -3,20 +3,19 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"go-client/lib/aiclient"
+	"go-client/lib/wvclient"
 	"log"
 	"os"
 
 	"github.com/gocarina/gocsv"
-	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 	"github.com/weaviate/weaviate-go-client/v4/weaviate"
 )
 
-var dbLearnCocktailCmd = &cobra.Command{
-	Use:   "learn-cocktail",
+var dbLearnCmd = &cobra.Command{
+	Use:   "learn",
 	Short: "Learn cocktails from CSV to DB",
-	Run:   cmd_db_learn_cocktail,
+	Run:   cmd_db_learn,
 }
 
 type CsvCocktail struct {
@@ -32,30 +31,27 @@ type CsvCocktail struct {
 }
 
 func init() {
-	dbCmd.AddCommand(dbLearnCocktailCmd)
+	dbCmd.AddCommand(dbLearnCmd)
 }
 
-func cmd_db_learn_cocktail(cmd *cobra.Command, args []string) {
+func cmd_db_learn(cmd *cobra.Command, args []string) {
 	cocktails, err := cmd_learn_get_cocktails("data/cocktails.csv")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	client, err := cmd_db_get_client()
-	if err != nil {
-		log.Fatal(err)
-	}
+	wv := wvclient.New()
 
-	sessionId := uuid.NewString()
-	ai := aiclient.New(cfgFile, sessionId, chatName)
+	// sessionId := uuid.NewString()
+	// ai := aiclient.New(cfgFile, sessionId, chatName)
 
 	for _, c := range cocktails {
-		text := cmd_learn_make_cocktail_text(c)
-		embedding, err := ai.GetEmbeddingOllama("nomic-embed-text:latest", text)
+		// text := cmd_learn_make_cocktail_text(c)
+		// embedding, err := ai.GetEmbeddingOllama("nomic-embed-text:latest", text)
 		if err != nil {
 			log.Fatal(err)
 		}
-		cmd_learn_store_cocktail_in_weaviate(client, c, embedding)
+		cmd_learn_store_cocktail_in_weaviate(wv.Client, c)
 
 		log.Printf("Added: %s", c.Name)
 	}
@@ -83,16 +79,17 @@ func cmd_learn_make_cocktail_text(c CsvCocktail) string {
 	)
 }
 
-func cmd_learn_store_cocktail_in_weaviate(client *weaviate.Client, c CsvCocktail, vector []float32) {
+// func cmd_learn_store_cocktail_in_weaviate(client *weaviate.Client, c CsvCocktail, vector []float32) {
+func cmd_learn_store_cocktail_in_weaviate(client *weaviate.Client, c CsvCocktail) {
 
 	_, err := client.Data().Creator().
 		WithClassName("Cocktail").
 		WithProperties(map[string]interface{}{
-			"name":         c.Name,
-			"ingredients":  c.Ingredients,
-			"instructions": c.Preparation,
+			"name":        c.Name,
+			"ingredients": c.Ingredients,
+			"preparation": c.Preparation,
 		}).
-		WithVector(vector).
+		// WithVector(vector).
 		Do(context.Background())
 
 	if err != nil {
