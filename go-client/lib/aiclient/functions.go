@@ -4,14 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"go-client/lib/wvclient"
+	"go-client/lib/appconfig"
+	"go-client/lib/cocktail"
+	"go-client/lib/tools"
 	"log"
 	"strings"
 	"time"
 
 	openai "github.com/sashabaranov/go-openai"
 	"github.com/sashabaranov/go-openai/jsonschema"
-	"github.com/weaviate/weaviate-go-client/v4/weaviate/graphql"
 )
 
 type functionDef struct {
@@ -19,8 +20,6 @@ type functionDef struct {
 	callFn     func(toolCall openai.ToolCall, sessionId string) (string, error)
 }
 
-// TODO
-// - add API request inside callFn
 var toolFunctions []functionDef = []functionDef{
 	{
 		definition: openai.FunctionDefinition{
@@ -57,50 +56,6 @@ var toolFunctions []functionDef = []functionDef{
 	},
 	{
 		definition: openai.FunctionDefinition{
-			Name:        "recipe_list",
-			Description: "Get a list of available cooking recipes. Response is JSON. Format: { {name:\"\", description:\"\"} }",
-			Parameters: jsonschema.Definition{
-				Type:       jsonschema.Object,
-				Properties: map[string]jsonschema.Definition{},
-			},
-		},
-		callFn: func(toolCall openai.ToolCall, sessionId string) (string, error) {
-
-			list := []struct {
-				Name        string
-				Description string
-			}{
-				{Name: "Jajecznica", Description: "Tradycyjna jajecznica na maśle"},
-				{Name: "Jajecznica na boczku", Description: "Jajecznica zrobiona na boczku"},
-				{Name: "Kanapka z szynką", Description: "Prosta kanapka - kromka chleba, masło, szynka"},
-				{Name: "Schabowy", Description: "Schabowy w panierce z bułki tartej"},
-			}
-			j, err := json.Marshal(list)
-
-			return string(j), err
-		},
-	},
-	{
-		definition: openai.FunctionDefinition{
-			Name:        "recipe_book",
-			Description: "Download a cooking recipe by entering its name.",
-			Parameters: jsonschema.Definition{
-				Type: jsonschema.Object,
-				Properties: map[string]jsonschema.Definition{
-					"name": {
-						Type:        jsonschema.String,
-						Description: "Recipe name",
-					},
-				},
-			},
-		},
-		callFn: func(toolCall openai.ToolCall, sessionId string) (string, error) {
-			// recipeName :=
-			return "Recipe content - TODO", nil
-		},
-	},
-	{
-		definition: openai.FunctionDefinition{
 			Name:        "cocktail_list",
 			Description: "Get list of alcohol cocktails by entering user description",
 			Parameters: jsonschema.Definition{
@@ -115,67 +70,73 @@ var toolFunctions []functionDef = []functionDef{
 		},
 		callFn: GetCocktailList,
 	},
+	{
+		definition: openai.FunctionDefinition{
+			Name:        "cocktail_recipe",
+			Description: "Get recipe for a cocktail with a user specified name",
+			Parameters: jsonschema.Definition{
+				Type: jsonschema.Object,
+				Properties: map[string]jsonschema.Definition{
+					"cocktail_name": {
+						Type:        jsonschema.String,
+						Description: "Cocktail name",
+					},
+				},
+			},
+		},
+		callFn: GetCocktailIstructions,
+	},
 }
 
 func GetCocktailList(toolCall openai.ToolCall, sessionId string) (string, error) {
+
+	// Find user description
 	var args map[string]interface{}
 	if err := json.Unmarshal([]byte(toolCall.Function.Arguments), &args); err != nil {
 		log.Fatal(err)
 	}
 	userRequest := args["user_description"].(string)
 
-	wv := wvclient.New()
+	// Weaviate Client
+	wvc := tools.GetWeaviateClient(appconfig.AppCfg.Weaviate.Scheme, appconfig.AppCfg.Weaviate.Host)
 	ctx := context.Background()
+	cr := cocktail.NewRepository(wvc, &ctx)
 
-	fields := []graphql.Field{
-		{Name: "name"},
-		{Name: "ingredients"},
-	}
-
-	nearText := wv.Client.GraphQL().
-		NearTextArgBuilder().
-		WithConcepts([]string{userRequest})
-
-	result, err := wv.Client.GraphQL().Get().
-		WithClassName("Cocktail").
-		WithFields(fields...).
-		WithNearText(nearText).
-		WithLimit(5).
-		Do(ctx)
+	// Query
+	limit := 5
+	cocktails, err := cr.GetListByNearText(userRequest, limit)
 	if err != nil {
-		log.Fatal("WV Fatal", err)
 		return "", err
 	}
-	if len(result.Errors) > 0 {
-		for _, gqlErr := range result.Errors {
-			log.Printf("Błąd GraphQL: %s", gqlErr.Message)
-		}
-		log.Fatal("END")
-	}
 
-	// build response
-	getData, ok := result.Data["Get"].(map[string]interface{})
-	if !ok {
-		return "", fmt.Errorf("no Get field in GQL response")
-	}
-
-	cocktails, ok := getData["Cocktail"].([]interface{})
-	if !ok {
-		return "", fmt.Errorf("no Cocktail field in GQL response")
-	}
-
+	// Build string response
 	var builder strings.Builder
 	for _, c := range cocktails {
-		cocktail := c.(map[string]interface{})
-		name := cocktail["name"].(string)
-		ingredients := cocktail["ingredients"].(string)
-
-		builder.WriteString(fmt.Sprintf("%s (%s)\n", name, ingredients))
+		builder.WriteString(fmt.Sprintf("%s (%s)\n", c.Name, c.Ingredients))
 	}
 
-	r := builder.String()
+	return builder.String(), nil
+}
 
-	fmt.Println(r)
+func GetCocktailIstructions(toolCall openai.ToolCall, sessionId string) (string, error) {
 
-	return r, nil
+	// Find user description
+	var args map[string]interface{}
+	if err := json.Unmarshal([]byte(toolCall.Function.Arguments), &args); err != nil {
+		log.Fatal(err)
+	}
+	cocktailName := args["cocktail_name"].(string)
+
+	// Weaviate Client
+	wvc := tools.GetWeaviateClient(appconfig.AppCfg.Weaviate.Scheme, appconfig.AppCfg.Weaviate.Host)
+	ctx := context.Background()
+	cr := cocktail.NewRepository(wvc, &ctx)
+
+	// Query
+	cocktail, err := cr.GetByCocktailName(cocktailName)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("Name: %s\nIngredients: %s\nPreparation: %s\n", cocktail.Name, cocktail.Ingredients, cocktail.Preparation), nil
 }

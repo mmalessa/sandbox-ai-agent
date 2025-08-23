@@ -22,9 +22,15 @@ type FunctionConfig struct {
 	RequestTemplate string `yaml:"requestTemplate"`
 }
 
+type WeaviateConfig struct {
+	Scheme string `yaml:"scheme"`
+	Host   string `yaml:"host"`
+}
+
 type AppConfig struct {
 	AiChatCfg   map[string]*AiChatConfig   `yaml:"chats"`
 	FunctionCfg map[string]*FunctionConfig `yaml:"functions"`
+	Weaviate    *WeaviateConfig            `yaml:"weaviate"`
 }
 
 var AppCfg *AppConfig

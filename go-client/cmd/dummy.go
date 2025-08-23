@@ -1,9 +1,11 @@
 package cmd
 
 import (
-	"encoding/json"
-	"fmt"
+	"context"
 	"go-client/lib/appconfig"
+	"go-client/lib/appdebug"
+	"go-client/lib/cocktail"
+	"go-client/lib/tools"
 	"log"
 
 	"github.com/spf13/cobra"
@@ -21,12 +23,17 @@ func init() {
 
 func cmd_dummy(cmd *cobra.Command, args []string) {
 	log.Println("Dummy command here")
-	b, _ := json.MarshalIndent(appconfig.AppCfg, "", "  ")
-	fmt.Println(string(b))
 
-	// _, err := aiclient.GetCocktailList()
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
+	// appdebug.PrettyPrint(appconfig.AppCfg)
 
+	wvc := tools.GetWeaviateClient(appconfig.AppCfg.Weaviate.Scheme, appconfig.AppCfg.Weaviate.Host)
+	ctx := context.Background()
+	cr := cocktail.NewRepository(wvc, &ctx)
+
+	// cocktails, err := cr.GetListByNearText("Varmouth", 3)
+	cocktails, err := cr.GetByCocktailName("Cove")
+	if err != nil {
+		log.Fatal(err)
+	}
+	appdebug.PrettyPrint(cocktails)
 }

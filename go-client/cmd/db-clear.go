@@ -3,7 +3,9 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"go-client/lib/wvclient"
+	"go-client/lib/appconfig"
+	"go-client/lib/cocktail"
+	"go-client/lib/tools"
 	"log"
 
 	"github.com/spf13/cobra"
@@ -20,9 +22,12 @@ func init() {
 }
 
 func cmd_db_clear(cmd *cobra.Command, args []string) {
-	wv := wvclient.New()
+	wvc := tools.GetWeaviateClient(appconfig.AppCfg.Weaviate.Scheme, appconfig.AppCfg.Weaviate.Host)
 
-	err := wv.Client.Schema().ClassDeleter().WithClassName("Cocktail").Do(context.Background())
+	ctx := context.Background()
+	cr := cocktail.NewRepository(wvc, &ctx)
+
+	err := cr.ClearClass()
 	if err != nil {
 		log.Println(err)
 	} else {

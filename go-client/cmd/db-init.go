@@ -2,12 +2,12 @@ package cmd
 
 import (
 	"context"
-	"fmt"
-	"go-client/lib/wvclient"
+	"go-client/lib/appconfig"
+	"go-client/lib/cocktail"
+	"go-client/lib/tools"
 	"log"
 
 	"github.com/spf13/cobra"
-	"github.com/weaviate/weaviate/entities/models"
 )
 
 var dbInitcmd = &cobra.Command{
@@ -21,35 +21,14 @@ func init() {
 }
 
 func cmd_db_init(cmd *cobra.Command, args []string) {
-	wv := wvclient.New()
+	wvc := tools.GetWeaviateClient(appconfig.AppCfg.Weaviate.Scheme, appconfig.AppCfg.Weaviate.Host)
+	ctx := context.Background()
+	cr := cocktail.NewRepository(wvc, &ctx)
 
-	classObj := &models.Class{
-		Class:       "Cocktail",
-		Description: "Alcoholic drink",
-		// Vectorizer:  "none", // bo embedding dostarczamy sami
-		Properties: []*models.Property{
-			{
-				Name:     "name",
-				DataType: []string{"text"},
-			},
-			{
-				Name:     "ingredients",
-				DataType: []string{"text"},
-			},
-			{
-				Name:     "preparation",
-				DataType: []string{"text"},
-			},
-		},
-		ModuleConfig: map[string]interface{}{
-			"text2vec-transformers": map[string]interface{}{},
-		},
-	}
-
-	err := wv.Client.Schema().ClassCreator().WithClass(classObj).Do(context.Background())
+	err := cr.InitClass()
 	if err != nil {
 		log.Println(err)
 	} else {
-		fmt.Println("Class Cocktail created")
+		log.Printf("Class %s created", cocktail.CocktailClassName)
 	}
 }
