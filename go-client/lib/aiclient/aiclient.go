@@ -219,12 +219,17 @@ func (a *aiclient) callApiBasedFunction(toolCall openai.ToolCall, sessionId stri
 	}
 	userRequest := args["request"].(string)
 
+	// request context
+	// TODO - get context from database
+	requestContext := "Offer only alcoholic drinks\nThe user is a gourmet\n"
+
 	// build request based on template
 	tmpl, err := template.New("msg").Parse(f.RequestTemplate)
 	if err != nil {
 		log.Fatal(err)
 	}
 	values := map[string]interface{}{
+		"Context": requestContext,
 		"Request": userRequest,
 	}
 	var buf bytes.Buffer

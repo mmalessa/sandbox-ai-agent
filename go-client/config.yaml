@@ -62,10 +62,16 @@ functions:
     url: "http://localhost:3001/api/ask"
     description: "Provide alcoholic drink suggestions based on user guidelines"
     requestTemplate: >
+      Context:
+      {{ .Context }}
+
       Podaj zwięzłą listę proponowanych drinków alkoholowych na podstawie takich wytycznych: {{ .Request }}
 
   get_drink_recipe:
     url: "http://localhost:3002/api/ask"
     description: "Provide a recipe for an alcoholic drink based on the name provided by the user"
     requestTemplate: >
+      Context:
+      {{ .Context }}
+      
       Podaj przepis na następujący drink alkoholowy: {{ .Request }}
