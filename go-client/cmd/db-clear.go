@@ -13,7 +13,7 @@ import (
 
 var dbClearCmd = &cobra.Command{
 	Use:   "clear",
-	Short: "Delete Coctail class",
+	Short: "Delete Cocktail class",
 	Run:   cmd_db_clear,
 }
 

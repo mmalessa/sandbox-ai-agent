@@ -12,7 +12,7 @@ import (
 
 var dbInitcmd = &cobra.Command{
 	Use:   "init",
-	Short: "Create Coctail class",
+	Short: "Create Cocktail class",
 	Run:   cmd_db_init,
 }
 
