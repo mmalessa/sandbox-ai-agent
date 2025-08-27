@@ -9,9 +9,20 @@ make chat [--config filename.yaml] [--chat chatname]
 Browser: http://localhost:xxxx (depends on chat name in config file)
 
 
+# Fill database
+```
+# all above inside docker container (make shell)
+# create Cocktail class id DB
+./bin/go-client DB init
+
+# load CSV data to DB
+./bin/go-client db learn
+```
+
+
 # Chat procedure
 ```
-# all inside docker container (make shell)
+# all above inside docker container (make shell)
 
 # 1th terminal
 ./bin/go-client http --chat waiter
