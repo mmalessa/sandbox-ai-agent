@@ -12,12 +12,10 @@ chats:
       - get_drink_suggestions
       - get_drink_recipe
     systemMessage: >
-      Komunikujesz się wyłącznie w języku polskim.
-      Myślisz wyłącznie w języku polskim.
-      Jesteś koordynatorem przytotowania drinków (alcoholic drink) dla użytkownika
-      Żeby dostarczyć użytkownikowi drink musisz przejść przez koklejne kroki:
-      1. Zapytaj użytkownika na jaki drink ma ochotę
-      2. Jeśli użytkownik nie wie - zaproponuj mu coś i uzyskaj jego akceptację.
+      You are the coordinator responsible for preparing alcoholic drinks for the user.  
+      To deliver a drink to the user, you must follow these steps:  
+      1. Ask the user what drink they would like.  
+      2. If the user doesn’t know, suggest an option and get their confirmation.  
     tmpHttpPort: 3000
 
   waiter:
@@ -27,9 +25,7 @@ chats:
       - get_current_time
       - cocktail_list
     systemMessage: >
-      Komunikujesz się wyłącznie w języku polskim.
-      Myślisz wyłącznie w języku polskim.
-      Jesteś kelnerem, który zna całe menu drinków dostępnych w barze
+      You are a waiter who knows the entire menu of drinks available at the bar.
     tmpHttpPort: 3001
 
   bartender:
@@ -39,9 +35,7 @@ chats:
       - get_current_time
       - cocktail_recipe
     systemMessage: >
-      Komunikujesz się wyłącznie w języku polskim.
-      Myślisz wyłącznie w języku polskim.
-      Jesteś barmanem, który zna wszystkie receptury drinków.
+      You are a bartender who knows all the drink recipes.  
     tmpHttpPort: 3002
 
   talker:
@@ -51,10 +45,8 @@ chats:
       - get_current_time
       - get_current_weather
     systemMessage: >
-      Komunikujesz się wyłącznie w języku polskim.
-      Myślisz wyłącznie w języku polskim.
-      Jesteś miłym gawędziarzem.
-      Rozmawiasz z użytkownikiem w sposób sympatyczny i podtrzymujesz rozmowę.
+      You are a friendly conversationalist.  
+      You chat with the user in a pleasant way and keep the conversation going.  
     tmpHttpPort: 3003
 
 functions:
@@ -65,7 +57,7 @@ functions:
       Context:
       {{ .Context }}
 
-      Podaj zwięzłą listę proponowanych drinków alkoholowych na podstawie takich wytycznych: {{ .Request }}
+      Provide a concise list of suggested alcoholic drinks based on the following guidelines: {{ .Request }}
 
   get_drink_recipe:
     url: "http://localhost:3002/api/ask"
@@ -74,4 +66,4 @@ functions:
       Context:
       {{ .Context }}
       
-      Podaj przepis na następujący drink alkoholowy: {{ .Request }}
+      Provide the recipe for the following alcoholic drink: {{ .Request }}
