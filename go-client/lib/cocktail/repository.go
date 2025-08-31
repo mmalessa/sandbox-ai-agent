@@ -56,6 +56,8 @@ func (r *cocktailRepository) Save(c Cocktail) error {
 }
 
 // Queries
+// https://docs.weaviate.io/weaviate/api/graphql/search-operators
+
 func (r *cocktailRepository) GetListByNearText(text string, limit int) ([]Cocktail, error) {
 	fields := []graphql.Field{
 		{Name: "name"},
@@ -65,7 +67,8 @@ func (r *cocktailRepository) GetListByNearText(text string, limit int) ([]Cockta
 
 	nearText := r.client.GraphQL().
 		NearTextArgBuilder().
-		WithConcepts([]string{text})
+		WithConcepts([]string{text}).
+		WithDistance(0.6)
 
 	response, err := r.client.GraphQL().Get().
 		WithClassName(CocktailClassName).

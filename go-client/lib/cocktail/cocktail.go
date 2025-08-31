@@ -5,11 +5,12 @@ import (
 )
 
 var CocktailClassName = "Cocktail"
+var VectorizerName = "text2vec-transformers" // "none" - jeśli embedding dostarczamy sami
 
 var CocktailClass = models.Class{
 	Class:       CocktailClassName,
 	Description: "Alcoholic drink",
-	// Vectorizer:  "none", // bo embedding dostarczamy sami
+	Vectorizer:  VectorizerName,
 	Properties: []*models.Property{
 		{
 			Name:     "name",
@@ -22,10 +23,18 @@ var CocktailClass = models.Class{
 		{
 			Name:     "preparation",
 			DataType: []string{"text"},
+			ModuleConfig: map[string]interface{}{
+				VectorizerName: map[string]interface{}{
+					"skip": true, // exclude from embedding
+				},
+			},
 		},
 	},
 	ModuleConfig: map[string]interface{}{
-		"text2vec-transformers": map[string]interface{}{},
+		VectorizerName: map[string]interface{}{
+			"vectorizeClassName":    false,
+			"vectorizePropertyName": true,
+		},
 	},
 }
 
