@@ -45,3 +45,34 @@ browser: http://localhost:3000
 
 # VSC + Weaviate 
 - Instal Weaviate Studio
+
+
+# TODO
+Prompt structure example:
+```
+[ROLE]
+You are an AI SQL assistant. Your job is to translate user requests into SQL queries.
+
+[CONTEXT]
+Available tables:
+- users(id, name, email)
+- orders(id, user_id, total, date)
+- products(id, name, stock, price)
+
+[EXAMPLES]
+Example 1:
+[USER]: "Find all users with no orders."
+[ASSISTANT]: "SELECT * FROM users WHERE id NOT IN (SELECT user_id FROM orders);"
+
+Example 2:
+[USER]: "List products with stock below 10."
+[ASSISTANT]: "SELECT * FROM products WHERE stock < 10;"
+
+[TASK]
+User request: "Show me the top 5 customers by spending."
+
+[INSTRUCTIONS]
+- Return only valid SQL query.
+- Do not explain your reasoning.
+- Use only tables provided in context.
+```

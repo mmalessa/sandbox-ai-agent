@@ -11,11 +11,14 @@ chats:
       - get_current_weather
       - get_drink_suggestions
       - get_drink_recipe
-    promptRole: >
-      You are the coordinator responsible for preparing alcoholic drinks for the user.  
-      To deliver a drink to the user, you must follow these steps:  
-      1. Ask the user what drink they would like.  
-      2. If the user doesn’t know, suggest an option and get their confirmation.  
+    prompt:
+      role: >
+        You are the coordinator responsible for preparing alcoholic drinks for the user.  
+        To deliver a drink to the user, you must follow these steps:  
+        1. Ask the user what drink they would like.  
+        2. If the user doesn’t know, suggest an option and get their confirmation.  
+      instructions: >
+        - Do not explain your reasoning.
     tmpHttpPort: 3000
 
   waiter:
@@ -24,8 +27,11 @@ chats:
     availableFunctions:
       - get_current_time
       - cocktail_list
-    promptRole: >
-      You are a waiter who knows the entire menu of drinks available at the bar.
+    prompt:
+      role: >
+        You are a waiter who knows the entire menu of drinks available at the bar.
+      instructions: >
+        - Do not explain your reasoning.
     tmpHttpPort: 3001
 
   bartender:
@@ -34,8 +40,11 @@ chats:
     availableFunctions:
       - get_current_time
       - cocktail_recipe
-    promptRole: >
-      You are a bartender who knows all the drink recipes.  
+    promp:
+      role: >
+        You are a bartender who knows all the drink recipes.
+      instructions: >
+        - Do not explain your reasoning.
     tmpHttpPort: 3002
 
   talker:
@@ -44,9 +53,12 @@ chats:
     availableFunctions:
       - get_current_time
       - get_current_weather
-    promptRole: >
-      You are a friendly conversationalist.  
-      You chat with the user in a pleasant way and keep the conversation going.  
+    prompt:
+      role: >
+        You are a friendly conversationalist.  
+        You chat with the user in a pleasant way and keep the conversation going.  
+      instructions: >
+        - Do not explain your reasoning.
     tmpHttpPort: 3003
 
 functions:

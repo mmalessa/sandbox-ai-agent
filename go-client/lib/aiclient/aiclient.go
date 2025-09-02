@@ -59,7 +59,20 @@ func (a *aiclient) initAiClient() {
 	}
 	a.client = openai.NewClientWithConfig(config)
 
-	a.messages = append(a.messages, openai.ChatCompletionMessage{Role: "system", Content: a.cfg.PromptRole})
+	promptBuilder := PromptBuilder()
+	prompt := promptBuilder.
+		WithRole(a.cfg.Prompt.Role).
+		WithContext(a.cfg.Prompt.Context).
+		WithExamples(a.cfg.Prompt.Examples).
+		WithTask(a.cfg.Prompt.Task).
+		WithInstructions(a.cfg.Prompt.Instructions).
+		Get()
+
+	// Create Prompt
+	a.messages = append(a.messages, openai.ChatCompletionMessage{
+		Role:    "system",
+		Content: prompt,
+	})
 
 	a.defineTools()
 

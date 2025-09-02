@@ -1,11 +1,8 @@
 package cmd
 
 import (
-	"context"
-	"go-client/lib/appconfig"
-	"go-client/lib/appdebug"
-	"go-client/lib/cocktail"
-	"go-client/lib/tools"
+	"fmt"
+	"go-client/lib/aiclient"
 	"log"
 
 	"github.com/spf13/cobra"
@@ -26,14 +23,27 @@ func cmd_dummy(cmd *cobra.Command, args []string) {
 
 	// appdebug.PrettyPrint(appconfig.AppCfg)
 
-	wvc := tools.GetWeaviateClient(appconfig.AppCfg.Weaviate.Scheme, appconfig.AppCfg.Weaviate.Host)
-	ctx := context.Background()
-	cr := cocktail.NewRepository(wvc, &ctx)
+	// wvc := tools.GetWeaviateClient(appconfig.AppCfg.Weaviate.Scheme, appconfig.AppCfg.Weaviate.Host)
+	// ctx := context.Background()
+	// cr := cocktail.NewRepository(wvc, &ctx)
 
-	// cocktails, err := cr.GetListByNearText("Varmouth", 3)
-	cocktails, err := cr.GetByCocktailName("Cove")
-	if err != nil {
-		log.Fatal(err)
-	}
-	appdebug.PrettyPrint(cocktails)
+	// // cocktails, err := cr.GetListByNearText("Varmouth", 3)
+	// cocktails, err := cr.GetByCocktailName("Cove")
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// appdebug.PrettyPrint(cocktails)
+
+	promptBuilder := aiclient.PromptBuilder()
+
+	prompt := promptBuilder.
+		WithContext("Prompt context").
+		WithExamples("Prompt examples").
+		WithInstructions("Prompt instructions").
+		WithRole("Prompt role").
+		WithTask("Prompt task").
+		Get()
+
+	fmt.Println(prompt)
+
 }

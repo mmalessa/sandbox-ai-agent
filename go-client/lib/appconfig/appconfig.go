@@ -8,12 +8,20 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+type AiChatConfigPrompt struct {
+	Role         string `yaml:"role"`
+	Context      string `yaml:"context"`
+	Examples     string `yaml:"examples"`
+	Task         string `yaml:"task"`
+	Instructions string `yaml:"instructions"`
+}
+
 type AiChatConfig struct {
-	Model              string   `yaml:"model"`
-	Temperature        float32  `yaml:"temperature"`
-	PromptRole         string   `yaml:"promptRole"`
-	AvailableFunctions []string `yaml:"availableFunctions"`
-	TmpHttpPort        int      `yaml:"tmpHttpPort"`
+	Model              string             `yaml:"model"`
+	Temperature        float32            `yaml:"temperature"`
+	Prompt             AiChatConfigPrompt `yaml:"prompt"`
+	AvailableFunctions []string           `yaml:"availableFunctions"`
+	TmpHttpPort        int                `yaml:"tmpHttpPort"`
 }
 
 type FunctionConfig struct {
