@@ -11,7 +11,7 @@ chats:
       - get_current_weather
       - get_drink_suggestions
       - get_drink_recipe
-    systemMessage: >
+    promptRole: >
       You are the coordinator responsible for preparing alcoholic drinks for the user.  
       To deliver a drink to the user, you must follow these steps:  
       1. Ask the user what drink they would like.  
@@ -24,7 +24,7 @@ chats:
     availableFunctions:
       - get_current_time
       - cocktail_list
-    systemMessage: >
+    promptRole: >
       You are a waiter who knows the entire menu of drinks available at the bar.
     tmpHttpPort: 3001
 
@@ -34,7 +34,7 @@ chats:
     availableFunctions:
       - get_current_time
       - cocktail_recipe
-    systemMessage: >
+    promptRole: >
       You are a bartender who knows all the drink recipes.  
     tmpHttpPort: 3002
 
@@ -44,7 +44,7 @@ chats:
     availableFunctions:
       - get_current_time
       - get_current_weather
-    systemMessage: >
+    promptRole: >
       You are a friendly conversationalist.  
       You chat with the user in a pleasant way and keep the conversation going.  
     tmpHttpPort: 3003

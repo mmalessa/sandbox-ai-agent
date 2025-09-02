@@ -11,7 +11,7 @@ import (
 type AiChatConfig struct {
 	Model              string   `yaml:"model"`
 	Temperature        float32  `yaml:"temperature"`
-	SystemMessage      string   `yaml:"systemMessage"`
+	PromptRole         string   `yaml:"promptRole"`
 	AvailableFunctions []string `yaml:"availableFunctions"`
 	TmpHttpPort        int      `yaml:"tmpHttpPort"`
 }
