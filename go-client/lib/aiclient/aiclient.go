@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"go-client/lib/appconfig"
 	"go-client/lib/httptools"
-	"html/template"
 	"io"
 	"log"
 	"net/http"
@@ -83,7 +82,6 @@ func (a *aiclient) Ask(inputMsg string) (string, error) {
 	log.Printf("Sending request to AI: %s", inputMsg)
 
 	a.messages = append(a.messages, openai.ChatCompletionMessage{Role: openai.ChatMessageRoleUser, Content: string(inputMsg)})
-
 	response, err := a.request(
 		openai.ChatCompletionRequest{
 			Model:       a.cfg.Model,
@@ -232,27 +230,9 @@ func (a *aiclient) callApiBasedFunction(toolCall openai.ToolCall, sessionId stri
 	}
 	userRequest := args["request"].(string)
 
-	// request context
-	// TODO - get context from database
-	requestContext := "Offer only alcoholic drinks\nThe user is a gourmet\n"
-
-	// build request based on template
-	tmpl, err := template.New("msg").Parse(f.RequestTemplate)
-	if err != nil {
-		log.Fatal(err)
-	}
-	values := map[string]interface{}{
-		"Context": requestContext,
-		"Request": userRequest,
-	}
-	var buf bytes.Buffer
-	if err := tmpl.Execute(&buf, values); err != nil {
-		log.Fatal(err)
-	}
-
 	// HTTP Request
 	log.Printf("Function request to: %s", f.Url)
-	requestData := httptools.RequestData{Content: buf.String()}
+	requestData := httptools.RequestData{Content: userRequest}
 	jsonData, err := json.Marshal(requestData)
 	if err != nil {
 		log.Fatal(err)

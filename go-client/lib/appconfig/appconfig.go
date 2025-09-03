@@ -25,9 +25,8 @@ type AiChatConfig struct {
 }
 
 type FunctionConfig struct {
-	Url             string `yaml:"url"`
-	Description     string `yaml:"description"`
-	RequestTemplate string `yaml:"requestTemplate"`
+	Url         string `yaml:"url"`
+	Description string `yaml:"description"`
 }
 
 type WeaviateConfig struct {

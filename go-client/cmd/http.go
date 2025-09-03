@@ -48,7 +48,10 @@ func cmd_http(cmd *cobra.Command, args []string) {
 
 			w.Header().Set("Content-Type", "application/json")
 
-			response, err := ai.Ask(req.Content)
+			promptBuilder := aiclient.PromptBuilder()
+			prompt := promptBuilder.WithTask(req.Content).Get()
+
+			response, err := ai.Ask(prompt)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				return

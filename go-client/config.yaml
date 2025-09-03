@@ -31,6 +31,7 @@ chats:
       role: >
         You are a waiter who knows the entire menu of drinks available at the bar.
       instructions: >
+        - Provide a concise list of suggested alcoholic drinks based on the guidelines from user.
         - Do not explain your reasoning.
     tmpHttpPort: 3001
 
@@ -40,10 +41,11 @@ chats:
     availableFunctions:
       - get_current_time
       - cocktail_recipe
-    promp:
+    prompt:
       role: >
         You are a bartender who knows all the drink recipes.
       instructions: >
+        - Provide the recipe for the alcoholic drink.
         - Do not explain your reasoning.
     tmpHttpPort: 3002
 
@@ -65,17 +67,7 @@ functions:
   get_drink_suggestions:
     url: "http://localhost:3001/api/ask"
     description: "Provide alcoholic drink suggestions based on user guidelines"
-    requestTemplate: >
-      Context:
-      {{ .Context }}
-
-      Provide a concise list of suggested alcoholic drinks based on the following guidelines: {{ .Request }}
 
   get_drink_recipe:
     url: "http://localhost:3002/api/ask"
     description: "Provide a recipe for an alcoholic drink based on the name provided by the user"
-    requestTemplate: >
-      Context:
-      {{ .Context }}
-      
-      Provide the recipe for the following alcoholic drink: {{ .Request }}
