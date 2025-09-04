@@ -54,6 +54,10 @@ go-build: ## Build dev application (go build)
 #    @$(DC) exec sh -c "env CGO_ENABLED=${CGO_ENABLED} GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags '-X main.env=dev' -o bin/app ./"
 	@$(DC) exec go-client sh -c "env CGO_ENABLED=${CGO_ENABLED} GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -o bin/go-client ./"
 
+.PHONY: test
+test:
+	@$(DC) exec go-client sh -c "go test ./..."
+
 .PHONY: clean
 clean: ## Clean bin/
 	@$(DC) exec dev sh -c "rm -rf bin/go-client"
