@@ -40,8 +40,8 @@ chat: ## Start chat
 .PHONY: get-models ## Download Ollama models
 get-models:
 	@$(DC) exec -it ollama ollama pull qwen3:1.7b
-	@$(DC) exec -it ollama ollama pull mistral:7b-instruct
-	@$(DC) exec -it ollama ollama pull nomic-embed-text:latest
+	# @$(DC) exec -it ollama ollama pull mistral:7b-instruct
+	# @$(DC) exec -it ollama ollama pull nomic-embed-text:latest
 
 
 .PHONY: list-models ## Download Ollama models

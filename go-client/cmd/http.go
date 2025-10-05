@@ -1,12 +1,17 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"go-client/lib/aiclient"
 	"go-client/lib/appconfig"
 	"go-client/lib/httptools"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -38,11 +43,22 @@ func cmd_http(cmd *cobra.Command, args []string) {
 	})
 	r.Route("/api", func(r chi.Router) {
 		r.Post("/ask", func(w http.ResponseWriter, r *http.Request) {
-			var req httptools.RequestData
-			var resp httptools.ResponseData
+			// Limit request body size
+			r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1 MiB
 
-			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-				http.Error(w, fmt.Sprintf("Invalid JSON error: %#v", err), http.StatusBadRequest)
+			var req httptools.RequestData
+			decoder := json.NewDecoder(r.Body)
+			decoder.DisallowUnknownFields()
+			if err := decoder.Decode(&req); err != nil {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusBadRequest)
+				json.NewEncoder(w).Encode(map[string]string{"error": fmt.Sprintf("invalid JSON: %v", err)})
+				return
+			}
+			if req.Content == "" {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusBadRequest)
+				json.NewEncoder(w).Encode(map[string]string{"error": "content is required"})
 				return
 			}
 
@@ -51,17 +67,31 @@ func cmd_http(cmd *cobra.Command, args []string) {
 			promptBuilder := aiclient.PromptBuilder()
 			prompt := promptBuilder.WithTask(req.Content).Get()
 
-			response, err := ai.Ask(prompt)
-			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				return
+			// Run AI call with timeout and return structured errors
+			ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
+			defer cancel()
+			type aiResult struct {
+				resp string
+				err error
 			}
+			resultCh := make(chan aiResult, 1)
+			go func() {
+				resp, err := ai.Ask(prompt)
+				resultCh <- aiResult{resp: resp, err: err}
+			}()
 
-			resp.Content = response
-
-			w.WriteHeader(http.StatusOK)
-			if err := json.NewEncoder(w).Encode(resp); err != nil {
-				http.Error(w, "Encoding error", http.StatusInternalServerError)
+			select {
+			case <-ctx.Done():
+				w.WriteHeader(http.StatusGatewayTimeout)
+				json.NewEncoder(w).Encode(map[string]string{"error": "AI request timed out"})
+				return
+			case res := <-resultCh:
+				if res.err != nil {
+					w.WriteHeader(http.StatusInternalServerError)
+					json.NewEncoder(w).Encode(map[string]string{"error": res.err.Error()})
+					return
+				}
+				json.NewEncoder(w).Encode(httptools.ResponseData{Content: res.resp})
 			}
 		})
 	})
@@ -70,10 +100,31 @@ func cmd_http(cmd *cobra.Command, args []string) {
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", httpPort),
 		Handler: r,
-		// ReadTimeout: 5 * time.Second, // maksymalny czas na odczyt żądania
-		// WriteTimeout: 10 * time.Second,  // maksymalny czas na zapis odpowiedzi
-		// IdleTimeout: 600 * time.Second, // czas utrzymywania połączenia keep-alive
+		ReadTimeout: 10 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		IdleTimeout: 120 * time.Second,
 	}
-	srv.ListenAndServe()
+
+	// Start server and handle graceful shutdown
+	serverErrCh := make(chan error, 1)
+	go func() {
+		serverErrCh <- srv.ListenAndServe()
+	}()
+
+	shutdownCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	select {
+	case err := <-serverErrCh:
+		if err != nil && err != http.ErrServerClosed {
+			fmt.Println("server error:", err)
+		}
+	case <-shutdownCtx.Done():
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := srv.Shutdown(ctx); err != nil {
+			fmt.Println("graceful shutdown error:", err)
+		}
+	}
 
 }
